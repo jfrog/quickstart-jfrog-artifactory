@@ -125,6 +125,7 @@ Mappings:
     us-west-2:
       AMZNLINUXHVM: ami-01460aa81365561fe
       "700": ami-000937e944ea194bf
+      "702": ami-07153dc6b091fed8b
 Conditions:
   GovCloudCondition: !Equals
     - !Ref 'AWS::Region'

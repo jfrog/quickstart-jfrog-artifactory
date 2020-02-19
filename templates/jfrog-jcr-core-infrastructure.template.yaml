@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'JFrog Artifactory Quick Start Deployment'
+Description: 'JFrog Container Registry Quick Start Deployment'
 Parameters:
   VPCID:
     Type: AWS::EC2::VPC::Id

@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'JFrog Artifactory Quick Start Deployment'
+Description: 'JFrog Container Registry Quick Start Deployment'
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -34,10 +34,9 @@ Metadata:
           - VolumeSize
           - InstanceType
       - Label:
-          default: JFrog Artifactory configuration
+          default: JFrog Container Registry configuration
         Parameters:
-          - ArtifactoryVersion
-          - NumberOfSecondary
+          - JCRVersion
           - SMLicenseCertName
           - ArtifactoryServerName
           - MasterKey
@@ -96,9 +95,7 @@ Metadata:
         default: EBS root volume size
       InstanceType:
         default: EC2 instance type
-      NumberOfSecondary:
-        default: Number of secondary instances
-      ArtifactoryVersion:
+      JCRVersion:
         default: Artifactory version
       SMLicenseCertName:
         default: Artifactory licenses and certificate secret name
@@ -268,21 +265,7 @@ Parameters:
     ConstraintDescription: Must contain valid instance type.
     Default: m4.xlarge
     Type: String
-  NumberOfSecondary:
-    Description: The number of secondary Artifactory servers to complete your
-      HA deployment. To fit the Artifactory best practices, the minimum number
-      is two; the maximum is seven. Do not select more than instances than you
-      have licenses for.
-    AllowedValues:
-      - 2
-      - 3
-      - 4
-      - 5
-      - 6
-      - 7
-    Default: 2
-    Type: Number
-  ArtifactoryVersion:
+  JCRVersion:
     Description: The version of Artifactory that you want to deploy into the Quick Start.
       Please see the release notes to select the version you want to deploy.
       https://www.jfrog.com/confluence/display/RTF/Release+Notes
@@ -460,8 +443,7 @@ Resources:
         NumBastionHosts: !Ref NumBastionHosts
         VolumeSize: !Ref VolumeSize
         InstanceType: !Ref InstanceType
-        NumberOfSecondary: !Ref NumberOfSecondary
-        ArtifactoryVersion: !Ref ArtifactoryVersion
+        JCRVersion: !Ref JCRVersion
         SMLicenseCertName: !Ref SMLicenseCertName
         ArtifactoryServerName: !Ref ArtifactoryServerName
         MasterKey: !Ref MasterKey
