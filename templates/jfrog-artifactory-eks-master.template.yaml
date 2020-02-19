@@ -38,7 +38,7 @@ Metadata:
           - ReleaseStage
           - ArtifactoryDeploymentSize
           - NumberOfSecondary
-          - SMLicenseCertName
+          - SMCertName
           - MasterKey
       - Label:
           default: Amazon RDS configuration
@@ -110,7 +110,7 @@ Metadata:
         default: Release stage of the product to deploy
       ArtifactoryDeploymentSize:
         default: Artifactory deployment size
-      SMLicenseCertName:
+      SMCertName:
         default: Artifactory licenses and certificate secret name
       MasterKey:
         default: Master server key
@@ -346,7 +346,7 @@ Parameters:
       - Large
     Default: Medium
     Type: String
-  SMLicenseCertName:
+  SMCertName:
     Description: The secret name created in AWS Secrets Manager which contains the SSL certificate, certificate key, and Artifactory licenses.
     Type: String
   MasterKey:
@@ -524,7 +524,7 @@ Resources:
         ReleaseStage: !Ref ReleaseStage
         ArtifactoryDeploymentSize: !Ref ArtifactoryDeploymentSize
         NumberOfSecondary: !Ref NumberOfSecondary
-        SMLicenseCertName: !Ref SMLicenseCertName
+        SMCertName: !Ref SMCertName
         MasterKey: !Ref MasterKey
         DatabaseName: !Ref DatabaseName
         DatabaseEngine: !Ref DatabaseEngine

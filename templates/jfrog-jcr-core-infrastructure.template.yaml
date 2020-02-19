@@ -71,12 +71,12 @@ Mappings:
       ProDockerRepo: "docker.bintray.io/jfrog/artifactory-pro"
       NginxDockerRepo: "docker.bintray.io/jfrog/nginx-artifactory-pro"
 Resources:
-  ArtifactoryDBSubnetGroup:
+  JCRDBSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
       DBSubnetGroupDescription: Private Subnets available to the RDS Instance(s)
       SubnetIds: !Ref SubnetIds
-  ArtifactoryDB:
+  JCRDB:
     Type: AWS::RDS::DBInstance
     Properties:
       AllocatedStorage: !Ref DBAllocatedStorage
@@ -90,16 +90,16 @@ Resources:
       MasterUserPassword: !Ref DatabasePassword
       DBInstanceClass: !Ref DatabaseInstance
       DBName: !Ref DatabaseName
-      DBSubnetGroupName: !Ref  ArtifactoryDBSubnetGroup
+      DBSubnetGroupName: !Ref  JCRDBSubnetGroup
       VPCSecurityGroups:
-        - !Ref ArtifactoryDBSG
-  ArtifactoryDBSG:
+        - !Ref JCRDBSG
+  JCRDBSG:
     Type: AWS::EC2::SecurityGroup
     Properties:
       Tags:
         - Key: Name
           Value: artifactory-rds-sg
-      GroupDescription: SG for RDS Instance to allow communication from the Bastion and Artifactory servers.
+      GroupDescription: SG for RDS Instance to allow communication from the Bastion and JCR servers.
       VpcId: !Ref VPCID
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -149,13 +149,13 @@ Resources:
           FromPort: 443
           ToPort: 443
           CidrIp: 0.0.0.0/0
-  ArtifactoryS3IAMUser:
+  JCRS3IAMUser:
     Type: AWS::IAM::User
-  ArtifactoryIAMAcessKey:
+  JCRIAMAcessKey:
     Type: AWS::IAM::AccessKey
     Properties:
-      UserName: !Ref ArtifactoryS3IAMUser
-  ArtifactoryS3Bucket:
+      UserName: !Ref JCRS3IAMUser
+  JCRS3Bucket:
     Type: AWS::S3::Bucket
     Properties:
       AccessControl: Private
@@ -163,7 +163,7 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
-  ArtifactoryS3IAMPolicy:
+  JCRS3IAMPolicy:
     Type: AWS::IAM::Policy
     Properties:
       PolicyName: S3BucketPermissions
@@ -178,24 +178,24 @@ Resources:
               - Fn::Join:
                 - ''
                 - - "arn:aws:s3:::"
-                  - !Ref ArtifactoryS3Bucket
+                  - !Ref JCRS3Bucket
               - Fn::Join:
                 - ''
                 - - "arn:aws:s3:::"
-                  - !Ref ArtifactoryS3Bucket
+                  - !Ref JCRS3Bucket
                   - "/*"
       Users:
-        - !Ref ArtifactoryS3IAMUser
+        - !Ref JCRS3IAMUser
 Outputs:
   IAMAcessKey:
-    Value: !Ref ArtifactoryIAMAcessKey
+    Value: !Ref JCRIAMAcessKey
     Description: IAM Access key for the S3 Bucket
   SecretAccessKey:
-    Value: !GetAtt ArtifactoryIAMAcessKey.SecretAccessKey
+    Value: !GetAtt JCRIAMAcessKey.SecretAccessKey
     Description: Secret Access key for S3 Bucket
   S3Bucket:
-    Value: !Ref ArtifactoryS3Bucket
-    Description: Actual S3 bucket created for Artifactory
+    Value: !Ref JCRS3Bucket
+    Description: Actual S3 bucket created for JCR
   DBDriver:
     Value: !FindInMap [DatabaseMap, !Ref DatabaseEngine, Driver]
   DBPlugin:
@@ -211,10 +211,10 @@ Outputs:
     Value: !FindInMap [DatabaseMap, !Ref DatabaseEngine, Name]
   DBURL:
     Value: !Sub
-      - "jdbc:${DBType}://${ArtifactoryDBEndpointAddress}:${port}/${DatabaseName}${extraDBOps}"
+      - "jdbc:${DBType}://${JCRDBEndpointAddress}:${port}/${DatabaseName}${extraDBOps}"
       - {
         DBType: !FindInMap [DatabaseMap, !Ref DatabaseEngine, Name],
-        ArtifactoryDBEndpointAddress: !GetAtt ArtifactoryDB.Endpoint.Address,
+        JCRDBEndpointAddress: !GetAtt JCRDB.Endpoint.Address,
         port: !FindInMap [DatabaseMap, !Ref DatabaseEngine, port],
         extraDBOps: !FindInMap [DatabaseMap, !Ref DatabaseEngine, extraDBOps],
         }
