@@ -45,7 +45,7 @@ Metadata:
           - ReleaseStage
           - NumberOfSecondary
           - NumberOfEC2Nodes
-          - SMLicenseCertName
+          - SMCertName
           - ArtifactoryServerName
           - MasterKey
           - ExtraJavaOptions
@@ -120,7 +120,7 @@ Metadata:
         default: Number of secondary instances
       NumberOfEC2Nodes:
         default: Number of EC2 nodes
-      SMLicenseCertName:
+      SMCertName:
         default: Artifactory licenses and certificate secret name
       ArtifactoryServerName:
         default: Artifactory server name
@@ -333,7 +333,7 @@ Parameters:
       - "BETA"
     Default: "GA"
     Type: String
-  SMLicenseCertName:
+  SMCertName:
     Description: The secret name created in AWS Secrets Manager which contains the SSL certificate, certificate key, and Artifactory licenses.
     Type: String
   ArtifactoryServerName:
@@ -596,13 +596,13 @@ Resources:
         VolumeSize: !Ref VolumeSize
         DeploymentTag: Artifactory
         NumberOfSecondary: !Ref NumberOfSecondary
-        ArtifactoryLicense1: !Sub '{{resolve:secretsmanager:${SMLicenseCertName}:SecretString:ArtifactoryLicense1}}'
-        ArtifactoryLicense2: !Sub '{{resolve:secretsmanager:${SMLicenseCertName}:SecretString:ArtifactoryLicense2}}'
-        ArtifactoryLicense3: !Sub '{{resolve:secretsmanager:${SMLicenseCertName}:SecretString:ArtifactoryLicense3}}'
-        ArtifactoryLicense4: !Sub '{{resolve:secretsmanager:${SMLicenseCertName}:SecretString:ArtifactoryLicense4}}'
-        Certificate: !Sub '{{resolve:secretsmanager:${SMLicenseCertName}:SecretString:Certificate}}'
-        CertificateKey: !Sub '{{resolve:secretsmanager:${SMLicenseCertName}:SecretString:CertificateKey}}'
-        CertificateDomain: !Sub '{{resolve:secretsmanager:${SMLicenseCertName}:SecretString:CertificateDomain}}'
+        ArtifactoryLicense1: !Sub '{{resolve:secretsmanager:${SMCertName}:SecretString:ArtifactoryLicense1}}'
+        ArtifactoryLicense2: !Sub '{{resolve:secretsmanager:${SMCertName}:SecretString:ArtifactoryLicense2}}'
+        ArtifactoryLicense3: !Sub '{{resolve:secretsmanager:${SMCertName}:SecretString:ArtifactoryLicense3}}'
+        ArtifactoryLicense4: !Sub '{{resolve:secretsmanager:${SMCertName}:SecretString:ArtifactoryLicense4}}'
+        Certificate: !Sub '{{resolve:secretsmanager:${SMCertName}:SecretString:Certificate}}'
+        CertificateKey: !Sub '{{resolve:secretsmanager:${SMCertName}:SecretString:CertificateKey}}'
+        CertificateDomain: !Sub '{{resolve:secretsmanager:${SMCertName}:SecretString:CertificateDomain}}'
         ArtifactoryServerName: !Ref ArtifactoryServerName
         ArtifactoryIAMAcessKey: !GetAtt ArtifactoryCoreInfraStack.Outputs.IAMAcessKey
         SecretAccessKey: !GetAtt ArtifactoryCoreInfraStack.Outputs.SecretAccessKey

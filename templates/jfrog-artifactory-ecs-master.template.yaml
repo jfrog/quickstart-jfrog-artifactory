@@ -41,7 +41,7 @@ Metadata:
           - ReleaseStage
           - NumberOfSecondary
           - NumberOfEC2Nodes
-          - SMLicenseCertName
+          - SMCertName
           - ArtifactoryServerName
           - MasterKey
           - ExtraJavaOptions
@@ -108,7 +108,7 @@ Metadata:
         default: EC2 instance type
       VolumeSize:
         default: EBS Root volume size
-      SMLicenseCertName:
+      SMCertName:
         default: Artifactory licenses and certificate secret name
       ArtifactoryServerName:
         default: Artifactory server name
@@ -317,7 +317,7 @@ Parameters:
       - "BETA"
     Default: "GA"
     Type: String
-  SMLicenseCertName:
+  SMCertName:
     Description: The secret name created in AWS Secrets Manager which contains the SSL certificate, certificate key, and Artifactory licenses.
     Type: String
   ArtifactoryServerName:
@@ -486,7 +486,7 @@ Resources:
         NumberOfEC2Nodes: !Ref NumberOfEC2Nodes
         ArtifactoryVersion: !Ref ArtifactoryVersion
         ReleaseStage: !Ref ReleaseStage
-        SMLicenseCertName: !Ref SMLicenseCertName
+        SMCertName: !Ref SMCertName
         ArtifactoryServerName: !Ref ArtifactoryServerName
         MasterKey: !Ref MasterKey
         ExtraJavaOptions: !Ref ExtraJavaOptions
