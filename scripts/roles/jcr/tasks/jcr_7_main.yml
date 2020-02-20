@@ -2,9 +2,9 @@
 
 - name: Set tomcat location
   set_fact:
-    artifactory_tomcat_loc: /var/opt/jfrog/artifactory/bootstrap/artifactory/tomcat/lib
+    jcr_tomcat_loc: /var/opt/jfrog/artifactory/bootstrap/artifactory/tomcat/lib
 
-- name: Configure an Instance to host Artifactory
+- name: Configure an Instance to host JCR
   include: "{{ my_tasks.name }}"
   when: ecs_deployment == false
   loop:

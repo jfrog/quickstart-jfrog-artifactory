@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "Deploys the EC2 Autoscaling, LaunchConfig and Instance for Artifactory"
+Description: "Deploys the EC2 Autoscaling, LaunchConfig and Instance for JCR"
 Parameters:
   PrivateSubnet1ID:
     Type: 'AWS::EC2::Subnet::Id'
@@ -19,15 +19,7 @@ Parameters:
     Type: String
   QSS3KeyPrefix:
     Type: String
-  ArtifactoryLicense1:
-    Type: String
-  ArtifactoryLicense2:
-    Type: String
-  ArtifactoryLicense3:
-    Type: String
-  ArtifactoryLicense4:
-    Type: String
-  ArtifactoryServerName:
+  JCRServerName:
     Type: String
   Certificate:
     Type: String
@@ -36,13 +28,13 @@ Parameters:
     NoEcho: 'true'
   CertificateDomain:
     Type: String
-  ArtifactoryIAMAcessKey:
+  JCRIAMAcessKey:
     Type: String
     NoEcho: 'true'
   SecretAccessKey:
     Type: String
     NoEcho: 'true'
-  ArtifactoryS3Bucket:
+  JCRS3Bucket:
     Type: String
   DBURL:
     Type: String
@@ -59,14 +51,12 @@ Parameters:
   DatabasePassword:
     Type: String
     NoEcho: 'true'
-  ArtifactoryPrimary:
+  ExtraJavaOptions:
     Type: String
   MasterKey:
     Type: String
     NoEcho: 'true'
-  ExtraJavaOptions:
-    Type: String
-  ArtifactoryVersion:
+  JCRVersion:
     Type: String
   KeyPairName:
     Type: AWS::EC2::KeyPair::KeyName
@@ -87,7 +77,7 @@ Parameters:
     Type: String
     NoEcho: 'true'
   AnsibleVaultPass:
-    Description: Ansiblevault Password to secure the artifactory.yml
+    Description: Ansiblevault Password to secure the jcr.yml
     Type: String
     NoEcho: 'true'
 # To populate additional mappings use the following with the desired --region
@@ -115,26 +105,22 @@ Mappings:
     sa-east-1:
       AMZNLINUXHVM: ami-04b202bf877b5027b
     us-east-1:
-      AMZNLINUXHVM: ami-09d069a04349dc3cb
-      "700": ami-06baee01fb2ef01d2
-      "702": ami-085b1acc8e8b5b039
+      "720": ami-05aa02eddf5f692b7
     us-east-2:
       AMZNLINUXHVM: ami-0d542ef84ec55d71c
     us-west-1:
       AMZNLINUXHVM: ami-04bc3da8f14823e88
     us-west-2:
-      AMZNLINUXHVM: ami-01460aa81365561fe
-      "700": ami-000937e944ea194bf
-      "702": ami-07153dc6b091fed8b
+      "720": ami-00e553f639e682cb8
 Conditions:
   GovCloudCondition: !Equals
     - !Ref 'AWS::Region'
     - us-gov-west-1
 Resources:
-  ArtifactoryScalingGroup:
+  JCRScalingGroup:
     Type: 'AWS::AutoScaling::AutoScalingGroup'
     Properties:
-      LaunchConfigurationName: !Ref ArtifactoryLaunchConfiguration
+      LaunchConfigurationName: !Ref JCRLaunchConfiguration
       VPCZoneIdentifier:
         - !Ref PrivateSubnet1ID
         - !Ref PrivateSubnet2ID
@@ -156,37 +142,33 @@ Resources:
         Count: 1
         Timeout: PT30M
 
-  ArtifactoryLaunchConfiguration:
+  JCRLaunchConfiguration:
       Type: 'AWS::AutoScaling::LaunchConfiguration'
       Metadata:
         'AWS::CloudFormation::Authentication':
           S3AccessCreds:
             type: S3
             roleName:
-              - !Ref HostRole #!Ref ArtifactoryHostRole
+              - !Ref HostRole
             buckets:
               - !Ref QSS3BucketName
         'AWS::CloudFormation::Init':
           configSets:
-            artifactory_install:
-              - "config-artifactory-master"
-              - "secure-artifactory"
-          config-artifactory-master:
+            jcr_install:
+              - "config-jcr-master"
+              - "secure-jcr"
+          config-jcr-master:
             files:
-              /root/.artifactory_ansible/artifactory.yml:
+              /root/.jcr_ansible/jcr.yml:
                 content: !Sub |
-                    # Base install for Artifactory
-                    - import_playbook: site-artifactory.yml
+                    # Base install for JCR
+                    - import_playbook: site-jcr.yml
                       vars:
-                        artifactory_license1: ${ArtifactoryLicense1}
-                        artifactory_license2: ${ArtifactoryLicense2}
-                        artifactory_license3: ${ArtifactoryLicense3}
-                        artifactory_license4: ${ArtifactoryLicense4}
-                        artifactory_server_name: ${ArtifactoryServerName}
+                        jcr_server_name: ${JCRServerName}
                         s3_endpoint: s3.${AWS::Region}.amazonaws.com
-                        s3_access_key: ${ArtifactoryIAMAcessKey}
+                        s3_access_key: ${JCRIAMAcessKey}
                         s3_access_secret_key: ${SecretAccessKey}
-                        s3_bucket: ${ArtifactoryS3Bucket}
+                        s3_bucket: ${JCRS3Bucket}
                         certificate: ${Certificate}
                         certificate_key: ${CertificateKey}
                         certificate_domain: ${CertificateDomain}
@@ -196,15 +178,14 @@ Resources:
                         db_url: ${DBURL}
                         db_user: ${DatabaseUser}
                         db_password: ${DatabasePassword}
-                        art_primary: ${ArtifactoryPrimary}
-                        master_key: ${MasterKey}
                         extra_java_opts: ${ExtraJavaOptions}
-                        artifactory_version: ${ArtifactoryVersion}
-                        artifactory_keystore:
+                        jcr_master_key: ${MasterKey}
+                        jcr_version: ${JCRVersion}
+                        jcr_keystore:
                           path: /opt/jfrog/artifactory/app/third-party/java/lib/security/cacerts
                           default_password: changeit
                           new_keystore_pass: ${KeystorePassword}
-                        artifactory_java_db_drivers:
+                        jcr_java_db_drivers:
                           - name: ${DBPlugin}
                             url: ${DBPluginURL}
                             owner: artifactory
@@ -216,9 +197,9 @@ Resources:
                 mode: "0400"
               /root/.secureit.sh:
                 content:
-                  ansible-vault encrypt /root/.artifactory_ansible/artifactory.yml --vault-id /root/.vault_pass.txt
+                  ansible-vault encrypt /root/.jcr_ansible/jcr.yml --vault-id /root/.vault_pass.txt
                 mode: "0770"
-          secure-artifactory:
+          secure-jcr:
             commands:
               'secure ansible playbook':
                 command: '/root/.secureit.sh'
@@ -252,7 +233,7 @@ Resources:
               {
 
               cfn-signal -e 1 --stack ${AWS::StackName} --region ${AWS::Region}
-              --resource ArtifactoryScalingGroup
+              --resource JCRScalingGroup
 
               exit 1
 
@@ -263,7 +244,7 @@ Resources:
               {
 
               cfn-signal -e 0 --stack ${AWS::StackName} --region ${AWS::Region}
-              --resource ArtifactoryScalingGroup
+              --resource JCRScalingGroup
 
               exit 0
 
@@ -301,17 +282,17 @@ Resources:
 
               #pip install ansible &> /var/log/userdata.ansible_install.log || qs_err " ansible install failed "
 
-              mkdir ~/.artifactory_ansible
+              mkdir ~/.jcr_ansible
 
-              aws s3 sync s3://${QSS3BucketName}/${QSS3KeyPrefix}scripts/ ~/.artifactory_ansible/
+              aws s3 sync s3://${QSS3BucketName}/${QSS3KeyPrefix}scripts/ ~/.jcr_ansible/
 
               cfn-init -v --stack ${AWS::StackName} --resource
-              ArtifactoryLaunchConfiguration --configsets artifactory_install
+              JCRLaunchConfiguration --configsets jcr_install
               --region ${AWS::Region} || cfn_fail
 
               export ANSIBLE_VAULT_PASSWORD_FILE="/root/.vault_pass.txt"
 
-              ansible-playbook /root/.artifactory_ansible/artifactory.yml || qs_err " ansible execution failed "
+              ansible-playbook /root/.jcr_ansible/jcr.yml || qs_err " ansible execution failed "
 
               rm -rf /root/.secureit.sh
 

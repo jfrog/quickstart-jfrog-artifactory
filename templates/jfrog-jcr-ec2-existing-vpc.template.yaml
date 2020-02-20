@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'JFrog Artifactory Quick Start Deployment into an Existing VPC (qs-1q037efj0)'
+Description: 'JFrog JCR Quick Start Deployment into an Existing VPC '
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -37,14 +37,13 @@ Metadata:
           - VolumeSize
           - InstanceType
       - Label:
-          default: JFrog Artifactory configuration
+          default: JFrog Container Registry configuration
         Parameters:
-          - ArtifactoryVersion
-          - NumberOfSecondary
-          - SMLicenseCertName
-          - ArtifactoryServerName
-          - MasterKey
+          - JCRVersion
+          - SMCertName
+          - JCRServerName
           - ExtraJavaOptions
+          - MasterKey
           - KeystorePassword
           - AnsibleVaultPass
       - Label:
@@ -52,7 +51,6 @@ Metadata:
         Parameters:
           - DatabaseName
           - DatabaseEngine
-          - DatabaseVersion
           - DatabaseUser
           - DatabasePassword
           - DatabaseInstance
@@ -106,18 +104,16 @@ Metadata:
         default: EBS root volume size
       InstanceType:
         default: EC2 instance type
-      NumberOfSecondary:
-        default: Number of secondary instances
-      ArtifactoryVersion:
-        default: Artifactory version
-      SMLicenseCertName:
-        default: Artifactory licenses and certificate secret name
-      ArtifactoryServerName:
-        default: Artifactory server name
-      MasterKey:
-        default: Master server key
+      JCRVersion:
+        default: JFrog Container Registery version
+      SMCertName:
+        default: JCR certificate and key secret name
+      JCRServerName:
+        default: JCR server name
       ExtraJavaOptions:
         default: Extra Java options
+      MasterKey:
+        default: Master server key
       KeystorePassword:
         default: Java keystore password
       AnsibleVaultPass:
@@ -126,8 +122,6 @@ Metadata:
         default: Database name
       DatabaseEngine:
         default: Database engine
-      DatabaseVersion:
-        default: Database version
       DatabaseUser:
         default: Database user
       DatabasePassword:
@@ -183,7 +177,7 @@ Parameters:
     Default: 10.0.32.0/19
     Type: String
   AccessCIDR:
-    Description: The CIDR IP range that is permitted to access Artifactory.
+    Description: The CIDR IP range that is permitted to access JCR.
       We recommend that you set this value to a trusted IP range.
       For example, you might want to grant only your corporate network access to the software.
     AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
@@ -202,7 +196,7 @@ Parameters:
     Default: internet-facing
     Type: String
   ProvisionBastionHost:
-    Description: Choose Disabled to skip creating a bastion instance. Due to the Artifactory nodes being
+    Description: Choose Disabled to skip creating a bastion instance. Due to the JCR nodes being
       created in private subnets, the default setting of Enabled this is highly recommended.
     AllowedValues:
       - "Enabled"
@@ -273,7 +267,7 @@ Parameters:
     Default: 200
     Type: Number
   InstanceType:
-    Description: The EC2 instance type for the Artifactory instances.
+    Description: The EC2 instance type for the JCR instance.
     AllowedValues:
       - m4.xlarge
       - m4.2xlarge
@@ -282,33 +276,25 @@ Parameters:
     ConstraintDescription: Must contain valid instance type.
     Default: m4.xlarge
     Type: String
-  NumberOfSecondary:
-    Description: The number of secondary Artifactory servers to complete your
-      HA deployment. To fit the Artifactory best practices, the minimum number
-      is two; the maximum is seven. Do not select more than instances than you
-      have licenses for.
-    AllowedValues:
-      - 2
-      - 3
-      - 4
-      - 5
-      - 6
-      - 7
-    Default: 2
-    Type: Number
-  ArtifactoryVersion:
-    Description: The version of Artifactory that you want to deploy into the Quick Start.
+  JCRVersion:
+    Description: The version of JCR that you want to deploy into the Quick Start.
       Please see the release notes to select the version you want to deploy.
-      https://www.jfrog.com/confluence/display/RTF/Release+Notes
+      https://www.jfrog.com/confluence/display/JCR6X/Release+Notes?src=sidebar
     AllowedPattern: ^(([0-9]|[1-9][0-9])\.){2}([1-9][0-9]|[0-9])$
-    ConstraintDescription: A version that matches X.X.X per Artifactory releases
+    ConstraintDescription: A version that matches X.X.X per JCR releases
     Default: 7.0.2
     Type: String
-  SMLicenseCertName:
-    Description: The secret name created in AWS Secrets Manager which contains the SSL certificate, certificate key, and Artifactory licenses.
+  SMCertName:
+    Description: The secret name created in AWS Secrets Manager which contains the SSL certificate and certificate key.
     Type: String
-  ArtifactoryServerName:
-    Description: The name of your Artifactory server. Ensure that this matches your certificate.
+  JCRServerName:
+    Description: The name of your JCR server. Ensure that this matches your certificate.
+    Type: String
+  ExtraJavaOptions:
+    Description: Setting Java memory parameters for JCR. For more information, see the JCR
+      system requirements.
+      https://www.jfrog.com/confluence/display/RTF/System+Requirements#SystemRequirements-RecommendedHardware.
+    Default: -server -Xms2g -Xmx14g -Xss256k -XX:+UseG1GC
     Type: String
   MasterKey:
     Description: The master key for the Artifactory cluster. Generate a master key by using the command '$openssl rand -hex 16'.
@@ -318,20 +304,14 @@ Parameters:
     ConstraintDescription: Only capital or lowercase letters and numbers, with a Max of 64 characters.
     NoEcho: 'true'
     Type: String
-  ExtraJavaOptions:
-    Description: Setting Java memory parameters for Artifactory. For more information, see the Artifactory
-      system requirements.
-      https://www.jfrog.com/confluence/display/RTF/System+Requirements#SystemRequirements-RecommendedHardware.
-    Default: -server -Xms2g -Xmx14g -Xss256k -XX:+UseG1GC
-    Type: String
   KeystorePassword:
     Description: A new Java keystore password. For better security the password that you specify will
       replace the default Java keystore password.
     NoEcho: 'true'
     Type: String
   AnsibleVaultPass:
-    Description: The Ansible Vault password to protect the Artifactory YAML configuration file
-      generated during the Artifactory deployment. This YAML file is stored on the EC2 nodes
+    Description: The Ansible Vault password to protect the JCR YAML configuration file
+      generated during the JCR deployment. This YAML file is stored on the EC2 nodes
       and secured with this password.
     NoEcho: 'true'
     Type: String
@@ -352,18 +332,6 @@ Parameters:
       - Postgres
     Default: Postgres
     Type: String
-  DatabaseVersion:
-    Description: The major version of the MySQL database engine you want to run. This is currently locked to MySQL versions
-      supported by Artifactory and RDS.
-    AllowedValues:
-      - 5.5
-      - 5.6
-      - 5.7
-      - 10.10
-      - 11.4
-      - 11.5
-    Default: 11.5
-    Type: String
   DatabaseUser:
     Description: The login ID for the master user of your DB instance.
     MinLength: '1'
@@ -373,7 +341,7 @@ Parameters:
     Default: artifactory
     Type: String
   DatabasePassword:
-    Description: The password for the Artifactory database user.
+    Description: The password for the JCR database user.
     AllowedPattern: ^[^ \\']+$
     MinLength: '8'
     MaxLength: '12'
@@ -385,10 +353,6 @@ Parameters:
   DatabaseInstance:
     Description: The size of the database to be deployed as part of the Quick Start.
     AllowedValues:
-      - db.m3.medium
-      - db.m3.large
-      - db.m3.xlarge
-      - db.m3.2xlarge
       - db.m4.large
       - db.m4.xlarge
       - db.m4.2xlarge
@@ -496,10 +460,10 @@ Resources:
         AlternativeIAMRole: !Ref BastionRole
         NumBastionHosts: !Ref NumBastionHosts
 
-  ArtifactoryCoreInfraStack:
+  JCRCoreInfraStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/jfrog-artifactory-core-infrastructure.template.yaml"
+      TemplateURL: !Sub "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/jfrog-jcr-core-infrastructure.template.yaml"
       Parameters:
         VPCID: !Ref VPCID
         VPCCIDR: !Ref VPCCIDR
@@ -515,11 +479,11 @@ Resources:
         DatabaseInstance: !Ref DatabaseInstance
         DatabaseName: !Ref DatabaseName
 
-  ArtifactoryELB:
+  JCRELB:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       IpAddressType: ipv4
-      Name: ArtifactoryELB
+      Name: JCRELB
       Scheme: !Ref ELBScheme
       Subnets:
         - !Ref PublicSubnet1ID
@@ -529,7 +493,7 @@ Resources:
           Value: artifactory-ELB
       Type: network
 
-  ArtifactorySSLTargetGroup:
+  JCRSSLTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       HealthCheckEnabled: True
@@ -538,14 +502,14 @@ Resources:
       HealthCheckTimeoutSeconds: 10
       HealthyThresholdCount: 3
       HealthCheckPort: "8082"
-      Name: ArtifactorySSL
+      Name: JCRSSL
       Port: 443
       Protocol: TCP
       TargetType: instance
       UnhealthyThresholdCount: 3
       VpcId: !Ref VPCID
 
-  ArtifactoryTargetGroup:
+  JCRTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       HealthCheckEnabled: True
@@ -554,34 +518,34 @@ Resources:
       HealthCheckTimeoutSeconds: 10
       HealthyThresholdCount: 3
       HealthCheckPort: "8082"
-      Name: Artifactory
+      Name: JCR
       Port: 80
       Protocol: TCP
       TargetType: instance
       UnhealthyThresholdCount: 3
       VpcId: !Ref VPCID
 
-  ArtifactorySSLELBListener:
+  JCRSSLELBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
       DefaultActions:
-        - TargetGroupArn: !Ref ArtifactorySSLTargetGroup
+        - TargetGroupArn: !Ref JCRSSLTargetGroup
           Type: forward
-      LoadBalancerArn: !Ref ArtifactoryELB
+      LoadBalancerArn: !Ref JCRELB
       Port: 443
       Protocol: TCP
 
-  ArtifactoryELBListener:
+  JCRELBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
       DefaultActions:
-        - TargetGroupArn: !Ref ArtifactoryTargetGroup
+        - TargetGroupArn: !Ref JCRTargetGroup
           Type: forward
-      LoadBalancerArn: !Ref ArtifactoryELB
+      LoadBalancerArn: !Ref JCRELB
       Port: 80
       Protocol: TCP
 
-  ArtifactoryEC2SG:
+  JCREC2SG:
     Type: AWS::EC2::SecurityGroup
     Properties:
       Tags:
@@ -618,7 +582,7 @@ Resources:
         - IpProtocol: "-1"
           CidrIp: 0.0.0.0/0
 
-  ArtifactoryHostRole:
+  JCRHostRole:
     Type: 'AWS::IAM::Role'
     Properties:
       Path: /
@@ -633,110 +597,58 @@ Resources:
         Version: 2012-10-17
       ManagedPolicyArns:
         - 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
-  ArtifactoryHostProfile:
+  JCRHostProfile:
       Type: 'AWS::IAM::InstanceProfile'
       Properties:
         Roles:
-          - !Ref ArtifactoryHostRole
+          - !Ref JCRHostRole
         Path: /
 
-  ArtifactoryMaster:
+  JCRMaster:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/jfrog-artifactory-ec2-instance.template.yaml'
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/jfrog-jcr-ec2-instance.template.yaml'
       Parameters:
         PrivateSubnet1ID: !Ref PrivateSubnet1ID
         PrivateSubnet2ID: !Ref PrivateSubnet2ID
-        MinScalingNodes: '1' # Always have 1 MasterNode
-        MaxScalingNodes: '1' # Always have 1 MasterNode
-        DeploymentTag: ArtifactoryMaster
-        HostRole: !Ref ArtifactoryHostRole
+        MinScalingNodes: '1' # Always have 1 JCRNode
+        MaxScalingNodes: '1' # Always have 1 JCRNode
+        DeploymentTag: JCRMaster
+        HostRole: !Ref JCRHostRole
         QSS3BucketName: !Ref QSS3BucketName
         QSS3KeyPrefix: !Ref QSS3KeyPrefix
-        AmiId: !Join [ '', !Split [".", !Ref ArtifactoryVersion] ]
-        ArtifactoryLicense1: !Sub '{{resolve:secretsmanager:${SMLicenseCertName}:SecretString:ArtifactoryLicense1}}'
-        ArtifactoryLicense2: !Sub '{{resolve:secretsmanager:${SMLicenseCertName}:SecretString:ArtifactoryLicense2}}'
-        ArtifactoryLicense3: !Sub '{{resolve:secretsmanager:${SMLicenseCertName}:SecretString:ArtifactoryLicense3}}'
-        ArtifactoryLicense4: !Sub '{{resolve:secretsmanager:${SMLicenseCertName}:SecretString:ArtifactoryLicense4}}'
-        ArtifactoryServerName: !Ref ArtifactoryServerName
-        Certificate: !Sub '{{resolve:secretsmanager:${SMLicenseCertName}:SecretString:Certificate}}'
-        CertificateKey: !Sub '{{resolve:secretsmanager:${SMLicenseCertName}:SecretString:CertificateKey}}'
-        CertificateDomain: !Sub '{{resolve:secretsmanager:${SMLicenseCertName}:SecretString:CertificateDomain}}'
-        ArtifactoryIAMAcessKey: !GetAtt ArtifactoryCoreInfraStack.Outputs.IAMAcessKey
-        SecretAccessKey: !GetAtt ArtifactoryCoreInfraStack.Outputs.SecretAccessKey
-        ArtifactoryS3Bucket: !GetAtt ArtifactoryCoreInfraStack.Outputs.S3Bucket
-        DBURL: !GetAtt ArtifactoryCoreInfraStack.Outputs.DBURL
-        DBDriver: !GetAtt ArtifactoryCoreInfraStack.Outputs.DBDriver
-        DBPlugin:  !GetAtt ArtifactoryCoreInfraStack.Outputs.DBPlugin
-        DBPluginURL:  !GetAtt ArtifactoryCoreInfraStack.Outputs.DBPluginURL
-        DBType: !GetAtt ArtifactoryCoreInfraStack.Outputs.DBType
+        AmiId: !Join [ '', !Split [".", !Ref JCRVersion] ]
+        JCRServerName: !Ref JCRServerName
+        Certificate: !Sub '{{resolve:secretsmanager:${SMCertName}:SecretString:Certificate}}'
+        CertificateKey: !Sub '{{resolve:secretsmanager:${SMCertName}:SecretString:CertificateKey}}'
+        CertificateDomain: !Sub '{{resolve:secretsmanager:${SMCertName}:SecretString:CertificateDomain}}'
+        JCRIAMAcessKey: !GetAtt JCRCoreInfraStack.Outputs.IAMAcessKey
+        SecretAccessKey: !GetAtt JCRCoreInfraStack.Outputs.SecretAccessKey
+        JCRS3Bucket: !GetAtt JCRCoreInfraStack.Outputs.S3Bucket
+        DBURL: !GetAtt JCRCoreInfraStack.Outputs.DBURL
+        DBDriver: !GetAtt JCRCoreInfraStack.Outputs.DBDriver
+        DBPlugin:  !GetAtt JCRCoreInfraStack.Outputs.DBPlugin
+        DBPluginURL:  !GetAtt JCRCoreInfraStack.Outputs.DBPluginURL
+        DBType: !GetAtt JCRCoreInfraStack.Outputs.DBType
         DatabaseUser: !Ref DatabaseUser
         DatabasePassword: !Ref DatabasePassword
-        ArtifactoryPrimary: 'true'
-        MasterKey: !Ref MasterKey
         ExtraJavaOptions: !Ref ExtraJavaOptions
+        MasterKey: !Ref MasterKey
         KeystorePassword: !Ref KeystorePassword
-        ArtifactoryVersion: !Ref ArtifactoryVersion
+        JCRVersion: !Ref JCRVersion
         KeyPairName: !Ref KeyPairName
-        HostProfile: !Ref ArtifactoryHostProfile
-        SecurityGroups: !Ref ArtifactoryEC2SG
+        HostProfile: !Ref JCRHostProfile
+        SecurityGroups: !Ref JCREC2SG
         InstanceType: !Ref InstanceType
         VolumeSize: !Ref VolumeSize
-        TargetGroupARN: !Ref ArtifactoryTargetGroup
-        SSLTargetGroupARN: !Ref ArtifactorySSLTargetGroup
+        TargetGroupARN: !Ref JCRTargetGroup
+        SSLTargetGroupARN: !Ref JCRSSLTargetGroup
         AnsibleVaultPass: !Ref AnsibleVaultPass
-
-  ArtifactorySecondary:
-    DependsOn: ArtifactoryMaster
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/jfrog-artifactory-ec2-instance.template.yaml'
-      Parameters:
-        PrivateSubnet1ID: !Ref PrivateSubnet1ID
-        PrivateSubnet2ID: !Ref PrivateSubnet2ID
-        MinScalingNodes: !Ref NumberOfSecondary
-        MaxScalingNodes: !Ref NumberOfSecondary
-        DeploymentTag: ArtifactorySecondary
-        HostRole: !Ref ArtifactoryHostRole
-        AmiId: !Join [ '', !Split [".", !Ref ArtifactoryVersion] ]
-        ArtifactoryLicense1: !Sub '{{resolve:secretsmanager:${SMLicenseCertName}:SecretString:ArtifactoryLicense1}}'
-        ArtifactoryLicense2: !Sub '{{resolve:secretsmanager:${SMLicenseCertName}:SecretString:ArtifactoryLicense2}}'
-        ArtifactoryLicense3: !Sub '{{resolve:secretsmanager:${SMLicenseCertName}:SecretString:ArtifactoryLicense3}}'
-        ArtifactoryLicense4: !Sub '{{resolve:secretsmanager:${SMLicenseCertName}:SecretString:ArtifactoryLicense4}}'
-        ArtifactoryServerName: !Ref ArtifactoryServerName
-        Certificate: !Sub '{{resolve:secretsmanager:${SMLicenseCertName}:SecretString:Certificate}}'
-        CertificateKey: !Sub '{{resolve:secretsmanager:${SMLicenseCertName}:SecretString:CertificateKey}}'
-        CertificateDomain: !Sub '{{resolve:secretsmanager:${SMLicenseCertName}:SecretString:CertificateDomain}}'
-        ArtifactoryIAMAcessKey: !GetAtt ArtifactoryCoreInfraStack.Outputs.IAMAcessKey
-        SecretAccessKey: !GetAtt ArtifactoryCoreInfraStack.Outputs.SecretAccessKey
-        ArtifactoryS3Bucket: !GetAtt ArtifactoryCoreInfraStack.Outputs.S3Bucket
-        DBURL: !GetAtt ArtifactoryCoreInfraStack.Outputs.DBURL
-        DBDriver: !GetAtt ArtifactoryCoreInfraStack.Outputs.DBDriver
-        DBPlugin:  !GetAtt ArtifactoryCoreInfraStack.Outputs.DBPlugin
-        DBPluginURL:  !GetAtt ArtifactoryCoreInfraStack.Outputs.DBPluginURL
-        DBType: !GetAtt ArtifactoryCoreInfraStack.Outputs.DBType
-        DatabaseUser: !Ref DatabaseUser
-        DatabasePassword: !Ref DatabasePassword
-        ArtifactoryPrimary: 'false'
-        MasterKey: !Ref MasterKey
-        ExtraJavaOptions: !Ref ExtraJavaOptions
-        KeystorePassword: !Ref KeystorePassword
-        ArtifactoryVersion: !Ref ArtifactoryVersion
-        KeyPairName: !Ref KeyPairName
-        HostProfile: !Ref ArtifactoryHostProfile
-        SecurityGroups: !Ref ArtifactoryEC2SG
-        InstanceType: !Ref InstanceType
-        VolumeSize: !Ref VolumeSize
-        TargetGroupARN: !Ref ArtifactoryTargetGroup
-        SSLTargetGroupARN: !Ref ArtifactorySSLTargetGroup
-        AnsibleVaultPass: !Ref AnsibleVaultPass
-        QSS3BucketName: !Ref QSS3BucketName
-        QSS3KeyPrefix: !Ref QSS3KeyPrefix
 
 Outputs:
-  ArtifactoryUrl:
-    Description: URL of the ELB to access Artifactory
-    Value: !Sub "https://${ArtifactoryELB.DNSName}"
+  JCRUrl:
+    Description: URL of the ELB to access JCR
+    Value: !Sub "https://${JCRELB.DNSName}"
   BastionIP:
     Value: !If
       - EnableBastion

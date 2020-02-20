@@ -11,10 +11,10 @@
   notify: restart nginx
 
 
-- name: Configure the Artifactory NGINX conf
+- name: Configure the JCR NGINX conf
   template:
-    src: artifactory.conf.j2
-    dest: /etc/nginx/conf.d/artifactory.conf
+    src: jcr.conf.j2
+    dest: /etc/nginx/conf.d/jcr.conf
     owner: root
     group: root
     mode: '0755'
@@ -23,8 +23,8 @@
 - name: Change to host python for Yum
   set_fact:
     ansible_python_interpreter: /usr/bin/python
-  when: artifactory_version.split('.')[0]|int == 7
-  
+  when: jcr_version.split('.')[0]|int == 7
+
 - name: Configure selinux for nginx
   seboolean:
     name: httpd_can_network_connect
