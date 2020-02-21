@@ -65,7 +65,7 @@ Mappings:
       extraDBOps: "?characterEncoding=UTF-8&elideSetAutoCommits=true"
   ReleaseStageMap:
     BETA:
-      ProDockerRepo: "earlyaccess-docker.jfrog.io/jfrog/artifactory-pro"
+      ProDockerRepo: "solengha-docker-aws.jfrog.io/jfrog/artifactory-jcr"
       NginxDockerRepo: "earlyaccess-docker.jfrog.io/jfrog/nginx-artifactory-pro"
     GA:
       ProDockerRepo: "docker.bintray.io/jfrog/artifactory-pro"

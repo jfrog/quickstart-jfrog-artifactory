@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "Deploys Artifactory into an existing Kubernetes cluster"
+Description: "Deploys JCR into an existing Kubernetes cluster"
 Parameters:
   KubeManifestLambdaArn:
     Type: String
@@ -11,25 +11,17 @@ Parameters:
     Type: String
   KubeGetLambdaArn:
     Type: String
-  NumberOfSecondary:
+  NumberOfNodes:
     Type: Number
   AccessCIDR:
     Type: String
-  ArtifactoryLicense1:
-    Type: String
-  ArtifactoryLicense2:
-    Type: String
-  ArtifactoryLicense3:
-    Type: String
-  ArtifactoryLicense4:
-    Type: String
-  ArtifactoryIAMAcessKey:
+  JCRIAMAcessKey:
     Type: String
     NoEcho: 'true'
   SecretAccessKey:
     Type: String
     NoEcho: 'true'
-  ArtifactoryS3Bucket:
+  JCRS3Bucket:
     Type: String
   CertificateKey:
     Type: String
@@ -55,13 +47,13 @@ Parameters:
   MasterKey:
     Type: String
     NoEcho: 'true'
-  ArtifactoryVersion:
+  JCRVersion:
     Type: String
   ProDockerRepo:
     Type: String
   NginxDockerRepo:
     Type: String
-  ArtifactoryDeploymentSize:
+  JCRDeploymentSize:
     Type: String
   ReleaseStage:
     Type: String
@@ -70,10 +62,10 @@ Mappings:
   HelmRepoMap:
     BETA:
       RepoUrl: https://earlyaccess.jfrog.io/artifactory/helm/
-      HelmChartVersion: 2.0.11
+      HelmChartVersion: 9.0.9
     GA:
       RepoUrl: https://charts.jfrog.io/
-      HelmChartVersion: 2.0.11
+      HelmChartVersion: 1.1.1
   DeploymentSize:
     Large:
       requestsMem: "6Gi"
@@ -109,9 +101,9 @@ Resources:
         kind: Namespace
         apiVersion: v1
         metadata:
-          name: jfrog-artifactory
+          name: jfrog-artifactory-jcr
           labels:
-            app: artifactory
+            app: artifactory-jcr
 
   CertificateStore:
     DependsOn: NameSpace
@@ -125,11 +117,11 @@ Resources:
         kind: Secret
         apiVersion: v1
         metadata:
-          name: artifactory-nginx-tls
-          namespace: jfrog-artifactory
+          name: artifactory-jcr-nginx-tls
+          namespace: jfrog-artifactory-jcr
           labels:
-            app: artifactory
-            chart: artifactory
+            app: artifactory-jcr
+            chart: artifactory-jcr
         type: kubernetes.io/tls
         data:
           tls.crt:
@@ -138,38 +130,6 @@ Resources:
           tls.key:
             Fn::Base64:
               !Join ["\n", "Fn::Split": ["|", !Ref CertificateKey]]
-
-  LicenseStore:
-    DependsOn: NameSpace
-    Type: "Custom::KubeManifest"
-    Version: '1.0'
-    Properties:
-      ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
-      Manifest:
-        kind: Secret
-        apiVersion: v1
-        metadata:
-          name: artifactory-cluster-license
-          namespace: jfrog-artifactory
-          labels:
-            app: artifactory
-            chart: artifactory
-        type: Opaque
-        stringData:
-          art.lic: !Sub
-            >-
-            ${ArtifactoryLicense1}
-
-
-            ${ArtifactoryLicense2}
-
-
-            ${ArtifactoryLicense3}
-
-
-            ${ArtifactoryLicense4}
 
   SecureStoreDB:
     DependsOn: NameSpace
@@ -183,11 +143,11 @@ Resources:
         kind: Secret
         apiVersion: v1
         metadata:
-          name: artifactory-cluster-db
-          namespace: jfrog-artifactory
+          name: artifactory-jcr-cluster-db
+          namespace: jfrog-artifactory-jcr
           labels:
-            app: artifactory
-            chart: artifactory
+            app: artifactory-jcr
+            chart: artifactory-jcr
         type: Opaque
         data:
           db-user:
@@ -200,34 +160,31 @@ Resources:
             Fn::Base64:
               !Sub ${DBURL}
 
-  ArtifactoryDeployment:
+  JCRDeployment:
     Type: "Custom::Helm"
     DependsOn:
-      - LicenseStore
       - CertificateStore
     Version: '1.0'
     Properties:
       ServiceToken: !Ref HelmLambdaArn
       KubeConfigPath: !Ref KubeConfigPath
       KubeConfigKmsContext: !Ref KubeConfigKmsContext
-      Namespace: jfrog-artifactory
-      Name: quickstart-artifactory-ha
-      Chart: jfrog/artifactory-ha
+      Namespace: jfrog-artifactory-jcr
+      Name: quickstart-artifactory-jcr
+      Chart: jfrog/artifactory
+      #Chart: jfrog/artifactory-jcr
       RepoUrl: !FindInMap [HelmRepoMap, !Ref ReleaseStage, RepoUrl]
-      # If we want to test specific version of the Helm chart, we can pass it herefjq
       Version: !FindInMap [HelmRepoMap, !Ref ReleaseStage, HelmChartVersion]
       ValueYaml: !Sub
         - |
+          #artifactory:
           artifactory:
-            name: artifactory-ha
+            name: artifactory-jcr
             image:
               repository: ${ProDockerRepo}
-              version: ${ArtifactoryVersion}
+              version: ${JCRVersion}
               pullPolicy: Always
             deleteDBPropertiesOnStartup: true
-            license:
-              secret: artifactory-cluster-license
-              dataKey: art.lic
             masterKey: ${MasterKey}
             preStartCommand: "mkdir -p /var/opt/jfrog/artifactory/bootstrap/artifactory/tomcat/lib/; wget -O  /var/opt/jfrog/artifactory/bootstrap/artifactory/tomcat/lib/${DBPlugin} ${DBPluginURL}"
             persistence:
@@ -236,43 +193,21 @@ Resources:
               awsS3:
                 endpoint: s3.${AWS::Region}.amazonaws.com
                 region: ${AWS::Region}
-                identity: ${ArtifactoryIAMAcessKey}
+                identity: ${JCRIAMAcessKey}
                 credential: ${SecretAccessKey}
-                bucketName: ${ArtifactoryS3Bucket}
-            service:
-              pool: all
-            primary:
-              resources:
-                requests:
-                  memory: "${requests_memory}"
-                  cpu: "${requests_cpu}"
-                limits:
-                  memory: "${limits_memory}"
-                  cpu: "${limits_cpu}"
-              javaOpts:
-                xms: "${java_xms}"
-                xmx: "${java_xmx}"
-              nodeSelector:
-                partition: artifactory-primary
-            node:
-              replicaCount: ${NumberOfSecondary}
-              resources:
-                requests:
-                  memory: "${requests_memory}"
-                  cpu: "${requests_cpu}"
-                limits:
-                  memory: "${limits_memory}"
-                  cpu: "${limits_cpu}"
-              javaOpts:
-                xms: "${java_xms}"
-                xmx: "${java_xmx}"
-              nodeSelector:
-                partition: artifactory-secondary
-              ## Only used if "affinity" is empty
-              podAntiAffinity:
-                ## Valid values are "soft" or "hard"; any other value indicates no anti-affinity
-                type: "soft"
-                topologyKey: "kubernetes.io/hostname"
+                bucketName: ${JCRS3Bucket}
+            resources:
+              requests:
+                memory: "${requests_memory}"
+                cpu: "${requests_cpu}"
+              limits:
+                memory: "${limits_memory}"
+                cpu: "${limits_cpu}"
+            javaOpts:
+              xms: "${java_xms}"
+              xmx: "${java_xmx}"
+            nodeSelector:
+              partition: production
           postgresql:
             enabled: false
           database:
@@ -280,42 +215,42 @@ Resources:
             driver: ${DBDriver}
             secrets:
               user:
-                name: artifactory-cluster-db
+                name: artifactory-jcr-cluster-db
                 key: "db-user"
               password:
-                name: artifactory-cluster-db
+                name: artifactory-jcr-cluster-db
                 key: "db-password"
               url:
-                name: artifactory-cluster-db
+                name: artifactory-jcr-cluster-db
                 key: "db-url"
           nginx:
             enabled: true
             image:
               repository: ${NginxDockerRepo}
-              version: ${ArtifactoryVersion}
-            replicaCount: 3
+              #version: ${JCRVersion}
+            replicaCount: ${NumberOfNodes}
             service:
               loadBalancerSourceRanges:  [ "${AccessCIDR}" ]
-            tlsSecretName: artifactory-nginx-tls
+            tlsSecretName: artifactory-jcr-nginx-tls
         - {
-           requests_memory: !FindInMap [DeploymentSize, !Ref ArtifactoryDeploymentSize, requestsMem],
-           requests_cpu: !FindInMap [DeploymentSize, !Ref ArtifactoryDeploymentSize, requestsCpu],
-           limits_memory: !FindInMap [DeploymentSize, !Ref ArtifactoryDeploymentSize, limitsMem],
-           limits_cpu: !FindInMap [DeploymentSize, !Ref ArtifactoryDeploymentSize, limitsCpu],
-           java_xms: !FindInMap [DeploymentSize, !Ref ArtifactoryDeploymentSize, javaOptsXms],
-           java_xmx: !FindInMap [DeploymentSize, !Ref ArtifactoryDeploymentSize, javaOptsXmx],
+           requests_memory: !FindInMap [DeploymentSize, !Ref JCRDeploymentSize, requestsMem],
+           requests_cpu: !FindInMap [DeploymentSize, !Ref JCRDeploymentSize, requestsCpu],
+           limits_memory: !FindInMap [DeploymentSize, !Ref JCRDeploymentSize, limitsMem],
+           limits_cpu: !FindInMap [DeploymentSize, !Ref JCRDeploymentSize, limitsCpu],
+           java_xms: !FindInMap [DeploymentSize, !Ref JCRDeploymentSize, javaOptsXms],
+           java_xmx: !FindInMap [DeploymentSize, !Ref JCRDeploymentSize, javaOptsXmx],
           }
   IngressHostName:
-    DependsOn: ArtifactoryDeployment
+    DependsOn: JCRDeployment
     Type: "Custom::KubeGet"
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeGetLambdaArn
       KubeConfigPath: !Ref KubeConfigPath
       KubeConfigKmsContext: !Ref KubeConfigKmsContext
-      Namespace: jfrog-artifactory
-      Name: svc/quickstart-artifactory-ha-nginx
+      Namespace: jfrog-artifactory-jcr
+      Name: svc/quickstart-artifactory-jcr-artifactory-nginx
       JsonPath: '{.status.loadBalancer.ingress[0].hostname}'
 Outputs:
-  ArtifactoryUrl:
+  JCRUrl:
     Value: !Sub https://${IngressHostName}

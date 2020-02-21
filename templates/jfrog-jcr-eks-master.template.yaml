@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'JFrog Artifactory Quick Start Deployment'
+Description: 'JFrog JCR Quick Start Deployment'
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -32,12 +32,11 @@ Metadata:
           - BastionEnableTCPForwarding
           - BastionEnableX11Forwarding
       - Label:
-          default: JFrog Artifactory configuration
+          default: JFrog Container Registry configuration
         Parameters:
-          - ArtifactoryVersion
+          - JCRVersion
           - ReleaseStage
-          - ArtifactoryDeploymentSize
-          - NumberOfSecondary
+          - JCRDeploymentSize
           - SMCertName
           - MasterKey
       - Label:
@@ -55,7 +54,7 @@ Metadata:
         Parameters:
           - NodeInstanceType
           - NodeVolumeSize
-          - NumofSecondaryNodes
+          - NumberOfNodes
           - KubernetesVersion
       - Label:
           default: AWS Quick Start configuration
@@ -102,16 +101,14 @@ Metadata:
         default: Bastion enable X11 forwarding
       BastionOS:
         default: Bastion operating system
-      NumberOfSecondary:
-        default: Number of secondary pods
-      ArtifactoryVersion:
-        default: Artifactory version
+      JCRVersion:
+        default: JCR version
       ReleaseStage:
         default: Release stage of the product to deploy
-      ArtifactoryDeploymentSize:
-        default: Artifactory deployment size
+      JCRDeploymentSize:
+        default: JCR deployment size
       SMCertName:
-        default: Artifactory licenses and certificate secret name
+        default: JCR certificate and key secret name
       MasterKey:
         default: Master server key
       DatabaseName:
@@ -132,8 +129,8 @@ Metadata:
         default: Node instance type
       NodeVolumeSize:
         default: Node EBS volume size
-      NumofSecondaryNodes:
-        default: Number of secondary nodes
+      NumberOfNodes:
+        default: Number of EKS nodes
       KubernetesVersion:
         default: Kubernetes version
       QSS3BucketName:
@@ -148,7 +145,7 @@ Parameters:
       to securely connect to your instance after it launches.
     Type: AWS::EC2::KeyPair::KeyName
   AccessCIDR:
-    Description: The CIDR IP range that is permitted to access Artifactory.
+    Description: The CIDR IP range that is permitted to access JCR.
       We recommend that you set this value to a trusted IP range.
       For example, you might want to grant only your corporate network access to the software.
     AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
@@ -167,7 +164,7 @@ Parameters:
     Type: CommaDelimitedList
   KubeConfigKmsContext:
     Description: String value used by KMS to encrypt/decrypt Kubernetes configuration file.
-    Default: "JFrogArtifactory"
+    Default: "JFrogContainerRegistry"
     Type: String
   AvailabilityZones:
     Description:
@@ -233,17 +230,13 @@ Parameters:
     Description: The size of EBS volumes for master node instances, in GB.
     Default: 200
     Type: String
-  NumofSecondaryNodes:
-    Description: The initial number of secondary node instances to create.
-      If you do not have large enough instances to boot the number of secondary pods, the deployment will fail.
+  NumberOfNodes:
+    Description: The initial number of EKS node instances to create.
     AllowedValues:
+      - 1
       - 2
       - 3
-      - 4
-      - 5
-      - 6
-      - 7
-    Default: 2
+    Default: 1
     Type: Number
   KubernetesVersion:
     Description: The Kubernetes control plane version.
@@ -251,7 +244,7 @@ Parameters:
     Default: "1.14"
     Type: String
   ProvisionBastionHost:
-    Description: Choose Disabled to skip creating a bastion instance. Due to the Artifactory nodes being
+    Description: Choose Disabled to skip creating a bastion instance. Due to the JCR nodes being
       created in private subnets, the default setting of Enabled this is highly recommended.
     AllowedValues:
       - "Enabled"
@@ -307,25 +300,12 @@ Parameters:
       - "SUSE-SLES-15-HVM"
     Default: "Amazon-Linux-HVM"
     Type: String
-  NumberOfSecondary:
-    Description: Number of secondary Artifactory pods to complete your HA deployment.
-      Minimum number of 2 to fit the Artifactory best practices. Do not select more than
-      you license for.
-    AllowedValues:
-      - 2
-      - 3
-      - 4
-      - 5
-      - 6
-      - 7
-    Default: 2
-    Type: Number
-  ArtifactoryVersion:
-    Description: The version of Artifactory that you want to deploy into the Quick Start.
+  JCRVersion:
+    Description: The version of JCR that you want to deploy into the Quick Start.
       Please see the release notes to select the version you want to deploy.
       https://www.jfrog.com/confluence/display/RTF/Release+Notes
     AllowedPattern: ^(([0-9]|[1-9][0-9])\.){2}([1-9][0-9]|[0-9])$
-    ConstraintDescription: A version that matches X.X.X per Artifactory releases.
+    ConstraintDescription: A version that matches X.X.X per JCR releases.
     Default: 7.0.2
     Type: String
   ReleaseStage:
@@ -335,7 +315,7 @@ Parameters:
       - "BETA"
     Default: "BETA"
     Type: String
-  ArtifactoryDeploymentSize:
+  JCRDeploymentSize:
     Description: Configuration settings implemented by the Helm chart. There are currently three supported sizes.
       'Large:' Memory request of 6 GiB, memory limit of 10GiB; CPU request of 4, CPU limit of 8; Java heap size minimum of 6 GB, maximum of 8 GB.
       'Medium:' Memory request of 4 GiB, memory limit of 8 GiB; CPU request of 2, CPU limit of 6; Java heap size minimum of 4 GB, maximum of 6 GB.
@@ -347,10 +327,10 @@ Parameters:
     Default: Medium
     Type: String
   SMCertName:
-    Description: The secret name created in AWS Secrets Manager which contains the SSL certificate, certificate key, and Artifactory licenses.
+    Description: The secret name created in AWS Secrets Manager which contains the SSL certificate and certificate key.
     Type: String
   MasterKey:
-    Description: The master key for the Artifactory cluster. Generate a master key by using the command '$openssl rand -hex 16'.
+    Description: The master key for the JCR cluster. Generate a master key by using the command '$openssl rand -hex 16'.
     AllowedPattern: ^[a-zA-Z0-9]+$
     MinLength: '1'
     MaxLength: '64'
@@ -380,10 +360,10 @@ Parameters:
     MaxLength: '16'
     AllowedPattern: ^[a-zA-Z]([a-zA-Z0-9])+$
     ConstraintDescription: 1 to 16 alphanumeric characters. First character must be a letter
-    Default: artifactory
+    Default: jcradmin
     Type: String
   DatabasePassword:
-    Description: The password for the Artifactory database user.
+    Description: The password for the JCR database user.
     AllowedPattern: ^[^ \\']+$
     MinLength: '8'
     MaxLength: '12'
@@ -444,7 +424,7 @@ Parameters:
     ConstraintDescription:
       Quick Start key prefix can include numbers, lowercase letters,
       uppercase letters, hyphens (-), and forward slash (/).
-    Default: quickstart-jfrog-artifactory/
+    Default: quickstart-jfrog-container-registry/
     Description:
       S3 key prefix for the Quick Start assets. Quick Start key prefix
       can include numbers, lowercase letters, uppercase letters, hyphens (-), and
@@ -494,10 +474,10 @@ Resources:
         PublicSubnet3CIDR: !Ref 'PublicSubnet3CIDR'
         PublicSubnetTag2: "kubernetes.io/role/elb="
 
-  ArtifactoryEKSExistingVPCStack:
+  JCREKSExistingVPCStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/jfrog-artifactory-eks-existing-vpc.template.yaml'
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/jfrog-jcr-eks-existing-vpc.template.yaml'
       Parameters:
         KeyPairName: !Ref KeyPairName
         AccessCIDR: !Ref AccessCIDR
@@ -520,10 +500,9 @@ Resources:
         BastionRootVolumeSize: !Ref BastionRootVolumeSize
         BastionEnableTCPForwarding: !Ref BastionEnableTCPForwarding
         BastionEnableX11Forwarding: !Ref BastionEnableX11Forwarding
-        ArtifactoryVersion: !Ref ArtifactoryVersion
+        JCRVersion: !Ref JCRVersion
         ReleaseStage: !Ref ReleaseStage
-        ArtifactoryDeploymentSize: !Ref ArtifactoryDeploymentSize
-        NumberOfSecondary: !Ref NumberOfSecondary
+        JCRDeploymentSize: !Ref JCRDeploymentSize
         SMCertName: !Ref SMCertName
         MasterKey: !Ref MasterKey
         DatabaseName: !Ref DatabaseName
@@ -536,18 +515,18 @@ Resources:
         KubernetesVersion: !Ref KubernetesVersion
         NodeInstanceType: !Ref NodeInstanceType
         NodeVolumeSize: !Ref NodeVolumeSize
-        NumofSecondaryNodes: !Ref NumofSecondaryNodes
+        NumberOfNodes: !Ref NumberOfNodes
         QSS3BucketName: !Ref QSS3BucketName
         QSS3KeyPrefix: !Ref QSS3KeyPrefix
         LambdaZipsBucketName: !Ref LambdaZipsBucketName
 
 Outputs:
-  ArtifactoryUrl:
-    Value: !GetAtt ArtifactoryEKSExistingVPCStack.Outputs.ArtifactoryUrl
-    Description: Public Artifactory URL
+  JCRUrl:
+    Value: !GetAtt JCREKSExistingVPCStack.Outputs.JCRUrl
+    Description: Public JCR URL
   BastionIP:
-    Value: !GetAtt ArtifactoryEKSExistingVPCStack.Outputs.BastionIP
+    Value: !GetAtt JCREKSExistingVPCStack.Outputs.BastionIP
     Description: Bastion host IP, for admin access via SSH
   KubeConfigPath:
-    Value: !GetAtt ArtifactoryEKSExistingVPCStack.Outputs.KubeConfigPath
+    Value: !GetAtt JCREKSExistingVPCStack.Outputs.KubeConfigPath
     Description: (Advanced) Amazon S3 bucket containing encrypted Kubernetes config which can be used to access the Kubernetes API.
