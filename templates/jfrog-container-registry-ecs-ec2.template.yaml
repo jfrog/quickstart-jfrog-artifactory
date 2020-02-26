@@ -1,9 +1,9 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: "Deploys the EC2 Autoscaling, LaunchConfig, ECS Cluster, and calls nested Stack for the ECS Service"
 Parameters:
-  PrivateSubnet1ID:
+  PrivateSubnet1Id:
     Type: 'AWS::EC2::Subnet::Id'
-  PrivateSubnet2ID:
+  PrivateSubnet2Id:
     Type: 'AWS::EC2::Subnet::Id'
   MinScalingNodes:
     Type: Number
@@ -17,7 +17,7 @@ Parameters:
     Description: Desired name for your cluster.
     Default: JFrog
     Type: String
-  CreateNewECSCluster:
+  CreateNewEcsCluster:
     Description: Whether to create the ECS Cluster with given name or not.
     Default: Enabled
     Type: String
@@ -25,15 +25,7 @@ Parameters:
     Type: String
   NumberOfSecondary:
     Type: Number
-  ArtifactoryLicense1:
-    Type: String
-  ArtifactoryLicense2:
-    Type: String
-  ArtifactoryLicense3:
-    Type: String
-  ArtifactoryLicense4:
-    Type: String
-  ArtifactoryServerName:
+  JcrServerName:
     Type: String
   Certificate:
     Type: String
@@ -42,27 +34,27 @@ Parameters:
     NoEcho: 'true'
   CertificateDomain:
     Type: String
-  ArtifactoryIAMAcessKey:
+  JcrIamAcessKey:
     Type: String
     NoEcho: 'true'
   SecretAccessKey:
     Type: String
     NoEcho: 'true'
-  ArtifactoryS3Bucket:
+  JcrS3Bucket:
     Type: String
-  DBURL:
+  DbUrl:
     Type: String
-  DBDriver:
+  DbDriver:
     Type: String
-  DBPlugin:
+  DbPlugin:
     Type: String
-  DBPluginURL:
+  DbPluginUrl:
     Type: String
   ProDockerRepo:
     Type: String
   NginxDockerRepo:
     Type: String
-  DBType:
+  DbType:
     Type: String
   DatabaseUser:
     Type: String
@@ -74,11 +66,11 @@ Parameters:
     NoEcho: 'true'
   ExtraJavaOptions:
     Type: String
-  ArtifactoryVersion:
+  JcrVersion:
     Type: String
   KeyPairName:
     Type: AWS::EC2::KeyPair::KeyName
-  ArtifactoryTargetGroupArn:
+  JcrTargetGroupArn:
     Type: String
   SecurityGroups:
     Type: String
@@ -125,7 +117,7 @@ Mappings:
     sa-east-1:
       AMZNLINUXHVM: ami-0c16a6e54a2f933f0
 Conditions:
-  CreateECSCluster: !Equals [!Ref 'CreateNewECSCluster', 'Enabled']
+  CreateEcsCluster: !Equals [!Ref 'CreateNewEcsCluster', 'Enabled']
   GovCloudCondition: !Equals
     - !Ref 'AWS::Region'
     - us-gov-west-1
@@ -139,7 +131,7 @@ Resources:
       AssumeRolePolicyDocument:
         Statement:
           - Action:
-            - sts:AssumeRole
+              - sts:AssumeRole
             Principal:
               Service:
                 - ecs-tasks.amazonaws.com
@@ -174,27 +166,27 @@ Resources:
                   - iam:ListRoles
                 Resource: "*"
 
-  ECSInstanceProfile:
+  EcsInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Path: /
       Roles:
         - !Ref ECSRole
 
-  ECSCluster:
-    Condition: CreateECSCluster
+  EcsCluster:
+    Condition: CreateEcsCluster
     Type: AWS::ECS::Cluster
     Properties:
       ClusterName: !Ref ClusterName
 
-  ArtifactoryScalingGroup:
+  JcrScalingGroup:
     Type: 'AWS::AutoScaling::AutoScalingGroup'
     Properties:
-      AutoScalingGroupName: ArtifactoryECSEC2ScaleGroup
-      LaunchConfigurationName: !Ref ArtifactoryLaunchConfiguration
+      AutoScalingGroupName: JcrEcsEC2ScaleGroup
+      LaunchConfigurationName: !Ref JcrLaunchConfiguration
       VPCZoneIdentifier:
-        - !Ref PrivateSubnet1ID
-        - !Ref PrivateSubnet2ID
+        - !Ref PrivateSubnet1Id
+        - !Ref PrivateSubnet2Id
       MinSize: !Ref MinScalingNodes
       MaxSize: !Ref MaxScalingNodes
       Cooldown: '300'
@@ -210,7 +202,7 @@ Resources:
         Count: 1
         Timeout: PT30M
 
-  ArtifactoryLaunchConfiguration:
+  JcrLaunchConfiguration:
     Type: 'AWS::AutoScaling::LaunchConfiguration'
     Metadata:
       'AWS::CloudFormation::Authentication':
@@ -229,23 +221,19 @@ Resources:
           files:
             /root/.artifactory_ansible/artifactory.yml:
               content: !Sub |
-                # Base install for Artifactory
-                - import_playbook: site-artifactory.yml
+                # Base install for Jcr
+                - import_playbook: site-jcr.yml
                   vars:
                     ecs_deployment: true
-                    artifactory_version: ${ArtifactoryVersion}
-                    artifactory_hostname: artifactory
+                    jcr_version: ${JcrVersion}
+                    jcr_hostname: artifactory
                     ssl_dir: /data/jfrog/nginx/ssl/
                     key_dir: /data/jfrog/nginx/ssl/
-                    artifactory_license1: ${ArtifactoryLicense1}
-                    artifactory_license2: ${ArtifactoryLicense2}
-                    artifactory_license3: ${ArtifactoryLicense3}
-                    artifactory_license4: ${ArtifactoryLicense4}
                     s3_endpoint: s3.${AWS::Region}.amazonaws.com
-                    s3_access_key: ${ArtifactoryIAMAcessKey}
+                    s3_access_key: ${JcrIamAcessKey}
                     s3_access_secret_key: ${SecretAccessKey}
-                    s3_bucket: ${ArtifactoryS3Bucket}
-                    artifactory_server_name: ${ArtifactoryServerName}
+                    s3_bucket: ${JcrS3Bucket}
+                    jcr_server_name: ${JcrServerName}
                     certificate: ${Certificate}
                     certificate_key: ${CertificateKey}
                     certificate_domain: ${CertificateDomain}
@@ -265,7 +253,7 @@ Resources:
     Properties:
       AssociatePublicIpAddress: false
       KeyName: !Ref KeyPairName
-      IamInstanceProfile: !Ref ECSInstanceProfile
+      IamInstanceProfile: !Ref EcsInstanceProfile
       ImageId: !FindInMap
         - AWSAMIRegionMap
         - !Ref 'AWS::Region'
@@ -273,7 +261,7 @@ Resources:
       SecurityGroups:
         - !Ref SecurityGroups
       InstanceType: !Ref InstanceType
-      LaunchConfigurationName: ArtifactoryECSEC2LaunchConfig
+      LaunchConfigurationName: JcrEcsEC2LaunchConfig
       BlockDeviceMappings:
         - DeviceName: /dev/xvda
           Ebs:
@@ -292,7 +280,7 @@ Resources:
             {
 
             cfn-signal -e 1 --stack ${AWS::StackName} --region ${AWS::Region}
-            --resource ArtifactoryScalingGroup
+            --resource JcrScalingGroup
 
             exit 1
 
@@ -303,7 +291,7 @@ Resources:
             {
 
             cfn-signal -e 0 --stack ${AWS::StackName} --region ${AWS::Region}
-            --resource ArtifactoryScalingGroup
+            --resource JcrScalingGroup
 
             exit 0
 
@@ -347,7 +335,7 @@ Resources:
             aws s3 sync s3://${QSS3BucketName}/${QSS3KeyPrefix}scripts/ ~/.artifactory_ansible/
 
             cfn-init -v --stack ${AWS::StackName} --resource
-            ArtifactoryLaunchConfiguration --configsets artifactory_install
+            JcrLaunchConfiguration --configsets artifactory_install
             --region ${AWS::Region} || cfn_fail
 
             export ANSIBLE_VAULT_PASSWORD_FILE="/root/.vault_pass.txt"
@@ -358,67 +346,38 @@ Resources:
 
             [ $(qs_status) == 0 ] && cfn_success || cfn_fail
           - S3Region: !If
-            - GovCloudCondition
-            - s3-us-gov-west-1
-            - s3
+              - GovCloudCondition
+              - s3-us-gov-west-1
+              - s3
 
-  ECSLogGroup:
+  EcsLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       RetentionInDays: 7
 
-  PrimaryStack:
-    DependsOn: ArtifactoryScalingGroup
+  JcrStack:
+    DependsOn: JcrScalingGroup
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/jfrog-artifactory-ecs.template.yaml'
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/jfrog-container-registry-ecs.template.yaml'
       Parameters:
-        ECSCluster: !Ref ClusterName # In case we do not build the cluster we still require the Name of the cluster built.
-        ServiceName: ArtifactoryPrimary
-        ArtifactoryTargetGroupArn: !Ref ArtifactoryTargetGroupArn
-        DBPlugin: !Ref DBPlugin
-        DBPluginURL: !Ref DBPluginURL
+        EcsCluster: !Ref ClusterName # In case we do not build the cluster we still require the Name of the cluster built.
+        ServiceName: Jfrog-Container-Registry
+        JcrTargetGroupArn: !Ref JcrTargetGroupArn
+        DbPlugin: !Ref DbPlugin
+        DbPluginUrl: !Ref DbPluginUrl
         MasterKey: !Ref MasterKey
         ExtraJavaOptions: !Ref ExtraJavaOptions
         NumberNodes: "1"
-        ArtifactoryPrimary: "true"
-        DBURL: !Ref DBURL
-        DBDriver: !Ref DBDriver
-        ProDockerRepoURL: !Sub "${ProDockerRepo}:${ArtifactoryVersion}"
-        NginxDockerRepoURL: !Sub "${NginxDockerRepo}:${ArtifactoryVersion}"
-        DBType: !Ref DBType
+        DbUrl: !Ref DbUrl
+        DbDriver: !Ref DbDriver
+        ProDockerRepoUrl: !Sub "${ProDockerRepo}:${JcrVersion}"
+        NginxDockerRepoUrl: !Sub "${NginxDockerRepo}:${JcrVersion}"
+        DbType: !Ref DbType
         DatabaseUser: !Ref DatabaseUser
         DatabasePassword: !Ref DatabasePassword
-        ECSLogGroup: !Ref ECSLogGroup
-        ECSRoleArn:
-          Fn::GetAtt: ECSRole.Arn
-        QSS3BucketName: !Ref QSS3BucketName
-        QSS3KeyPrefix: !Ref QSS3KeyPrefix
-
-  SecondaryStack:
-    DependsOn: PrimaryStack
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/jfrog-artifactory-ecs.template.yaml'
-      Parameters:
-        ECSCluster: !Ref ClusterName # In case we do not build the cluster we still require the Name of the cluster built.
-        ServiceName: ArtifactorySecondary
-        ArtifactoryTargetGroupArn: !Ref ArtifactoryTargetGroupArn
-        DBPlugin: !Ref DBPlugin
-        DBPluginURL: !Ref DBPluginURL
-        MasterKey: !Ref MasterKey
-        ExtraJavaOptions: !Ref ExtraJavaOptions
-        NumberNodes: !Ref NumberOfSecondary
-        ArtifactoryPrimary: "false" # If this is false then the entrypoint-artifactory script will get stuck in a forever waiting loop
-        DBURL: !Ref DBURL
-        DBDriver: !Ref DBDriver
-        ProDockerRepoURL: !Sub "${ProDockerRepo}:${ArtifactoryVersion}"
-        NginxDockerRepoURL: !Sub "${NginxDockerRepo}:${ArtifactoryVersion}"
-        DBType: !Ref DBType
-        DatabaseUser: !Ref DatabaseUser
-        DatabasePassword: !Ref DatabasePassword
-        ECSLogGroup: !Ref ECSLogGroup
-        ECSRoleArn:
+        EcsLogGroup: !Ref EcsLogGroup
+        EcsRoleArn:
           Fn::GetAtt: ECSRole.Arn
         QSS3BucketName: !Ref QSS3BucketName
         QSS3KeyPrefix: !Ref QSS3KeyPrefix

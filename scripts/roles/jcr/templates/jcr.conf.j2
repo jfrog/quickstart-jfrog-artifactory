@@ -5,14 +5,14 @@
 ## add HA entries when ha is configure
 upstream artifactory {
     {% if ecs_deployment %}
-    server artifactory:8082;
+    server jcr:8082;
     {% else %}
     server 127.0.0.1:8082;
     {% endif %}
 }
 upstream artifactory-direct {
     {% if ecs_deployment %}
-    server artifactory:8081;
+    server jcr:8081;
     {% else %}
     server 127.0.0.1:8081;
     {% endif %}

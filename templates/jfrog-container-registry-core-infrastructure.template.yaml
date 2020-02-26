@@ -1,25 +1,25 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'JFrog Container Registry Quick Start Deployment'
 Parameters:
-  VPCID:
+  VpcId:
     Type: AWS::EC2::VPC::Id
-  VPCCIDR:
+  VpcCidr:
     Description: CIDR block for the VPC
     AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
     ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16-28
     Default: 10.0.0.0/16
     Type: String
-  PrivateSubnet1CIDR:
+  PrivateSubnet1Cidr:
     AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
     ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16-28
     Default: 10.0.0.0/19
     Type: String
-  PrivateSubnet2CIDR:
+  PrivateSubnet2Cidr:
     AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
     ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16-28
     Default: 10.0.32.0/19
     Type: String
-  PrivateSubnet3CIDR:
+  PrivateSubnet3Cidr:
     AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
     ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16-28
     Default: 10.0.64.0/19
@@ -65,7 +65,7 @@ Mappings:
       extraDBOps: "?characterEncoding=UTF-8&elideSetAutoCommits=true"
   ReleaseStageMap:
     BETA:
-      ProDockerRepo: "earlyaccess-docker.jfrog.io/jfrog/artifactory-pro"
+      ProDockerRepo: "solengha-docker-aws.jfrog.io/jfrog/artifactory-jcr"
       NginxDockerRepo: "earlyaccess-docker.jfrog.io/jfrog/nginx-artifactory-pro"
     GA:
       ProDockerRepo: "docker.bintray.io/jfrog/artifactory-pro"
@@ -100,12 +100,12 @@ Resources:
         - Key: Name
           Value: artifactory-rds-sg
       GroupDescription: SG for RDS Instance to allow communication from the Bastion and JCR servers.
-      VpcId: !Ref VPCID
+      VpcId: !Ref VpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
-          CidrIp: !Ref VPCCIDR
+          CidrIp: !Ref VpcCidr
         - IpProtocol: tcp
           FromPort: !FindInMap
             - DatabaseMap
@@ -115,7 +115,7 @@ Resources:
             - DatabaseMap
             - !Ref DatabaseEngine
             - port
-          CidrIp: !Ref PrivateSubnet1CIDR
+          CidrIp: !Ref PrivateSubnet1Cidr
         - IpProtocol: tcp
           FromPort: !FindInMap
             - DatabaseMap
@@ -125,7 +125,7 @@ Resources:
             - DatabaseMap
             - !Ref DatabaseEngine
             - port
-          CidrIp: !Ref PrivateSubnet2CIDR
+          CidrIp: !Ref PrivateSubnet2Cidr
         - IpProtocol: tcp
           FromPort: !FindInMap
             - DatabaseMap
@@ -135,7 +135,7 @@ Resources:
             - DatabaseMap
             - !Ref DatabaseEngine
             - port
-          CidrIp: !Ref PrivateSubnet3CIDR
+          CidrIp: !Ref PrivateSubnet3Cidr
       SecurityGroupEgress:
         - IpProtocol: tcp
           FromPort: 22
