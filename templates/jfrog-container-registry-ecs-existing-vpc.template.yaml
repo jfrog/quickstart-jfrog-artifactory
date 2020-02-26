@@ -28,7 +28,7 @@ Metadata:
           - BastionInstanceType
           - BastionOS
           - BastionRootVolumeSize
-          - BastionEnableTCPForwarding
+          - BastionEnableTcpForwarding
           - NumBastionHosts
           - BastionEnableX11Forwarding
       - Label:
@@ -58,8 +58,8 @@ Metadata:
           - DatabaseUser
           - DatabasePassword
           - DatabaseInstance
-          - DBAllocatedStorage
-          - MultiAZDatabase
+          - DatabaseAllocatedStorage
+          - MultiAzDatabase
       - Label:
           default: AWS Quick Start Configuration
         Parameters:
@@ -96,7 +96,7 @@ Metadata:
         default: Bastion instance type
       BastionRootVolumeSize:
         default: Bastion root volume size
-      BastionEnableTCPForwarding:
+      BastionEnableTcpForwarding:
         default: Bastion enable TCP forwarding
       BastionEnableX11Forwarding:
         default: Bastion enable X11 forwarding
@@ -140,9 +140,9 @@ Metadata:
         default: Database password
       DatabaseInstance:
         default: Database instance type
-      DBAllocatedStorage:
+      DatabaseAllocatedStorage:
         default: Database allocated storage
-      MultiAZDatabase:
+      MultiAzDatabase:
         default: High available database
       QSS3BucketName:
         default: Quick Start S3 bucket name
@@ -228,7 +228,7 @@ Parameters:
     Description: The size of the root volume on the bastion instances.
     Default: 10
     Type: Number
-  BastionEnableTCPForwarding:
+  BastionEnableTcpForwarding:
     Description: Choose whether to enable TCPForwarding via the bootstrapping of the bastion instance
       or not.
     AllowedValues:
@@ -403,13 +403,13 @@ Parameters:
     ConstraintDescription: Must be a valid database Instance Type.
     Default: db.m4.large
     Type: String
-  DBAllocatedStorage:
+  DatabaseAllocatedStorage:
     Description: The size in GB of the available storage for the database instance.
     MinValue: 5
     MaxValue: 1024
     Default: 10
     Type: Number
-  MultiAZDatabase:
+  MultiAzDatabase:
     Description: Choose false to create an Amazon RDS instance in a single Availability Zone.
     ConstraintDescription: True or False
     AllowedValues:
@@ -464,7 +464,7 @@ Resources:
         BastionInstanceType: !Ref BastionInstanceType
         RootVolumeSize: !Ref BastionRootVolumeSize
         BastionAMIOS: !Ref BastionOS
-        EnableTCPForwarding: !Ref BastionEnableTCPForwarding
+        EnableTCPForwarding: !Ref BastionEnableTcpForwarding
         EnableX11Forwarding: !Ref BastionEnableX11Forwarding
         NumBastionHosts: !Ref NumBastionHosts
 
@@ -479,8 +479,8 @@ Resources:
         PrivateSubnet2Cidr: !Ref PrivateSubnet2Cidr
         PrivateSubnet3Cidr: !Ref PrivateSubnet2Cidr # This should end up in no new rule but required for EKS
         SubnetIds: !Join [",", [!Ref PrivateSubnet1Id, !Ref PrivateSubnet2Id]]
-        DBAllocatedStorage: !Ref DBAllocatedStorage
-        MultiAZDatabase: !Ref MultiAZDatabase
+        DatabaseAllocatedStorage: !Ref DatabaseAllocatedStorage
+        MultiAzDatabase: !Ref MultiAzDatabase
         DatabaseEngine: !Ref DatabaseEngine
         DatabaseUser: !Ref DatabaseUser
         DatabasePassword: !Ref DatabasePassword
@@ -590,13 +590,13 @@ Resources:
         JcrIamAcessKey: !GetAtt JcrCoreInfraStack.Outputs.IAMAcessKey
         SecretAccessKey: !GetAtt JcrCoreInfraStack.Outputs.SecretAccessKey
         JcrS3Bucket: !GetAtt JcrCoreInfraStack.Outputs.S3Bucket
-        DbUrl: !GetAtt JcrCoreInfraStack.Outputs.DBURL
-        DbDriver: !GetAtt JcrCoreInfraStack.Outputs.DBDriver
+        DbUrl: !GetAtt JcrCoreInfraStack.Outputs.DatabaseUrl
+        DbDriver: !GetAtt JcrCoreInfraStack.Outputs.DatabaseDriver
         ProDockerRepo: !GetAtt JcrCoreInfraStack.Outputs.ProDockerRepo
         NginxDockerRepo: !GetAtt JcrCoreInfraStack.Outputs.NginxDockerRepo
-        DbPlugin: !GetAtt JcrCoreInfraStack.Outputs.DBPlugin
-        DbPluginUrl: !GetAtt JcrCoreInfraStack.Outputs.DBPluginURL
-        DbType: !GetAtt JcrCoreInfraStack.Outputs.DBType
+        DbPlugin: !GetAtt JcrCoreInfraStack.Outputs.DatabasePlugin
+        DbPluginUrl: !GetAtt JcrCoreInfraStack.Outputs.DatabasePluginUrl
+        DbType: !GetAtt JcrCoreInfraStack.Outputs.DatabaseType
         DatabaseUser: !Ref DatabaseUser
         DatabasePassword: !Ref DatabasePassword
         MasterKey: !Ref MasterKey

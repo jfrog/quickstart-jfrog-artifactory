@@ -7,7 +7,7 @@ Metadata:
           default: Security configuration
         Parameters:
           - KeyPairName
-          - RemoteAccessCIDR
+          - RemoteAccessCidr
       - Label:
           default: Network Configuration
         Parameters:
@@ -15,7 +15,7 @@ Metadata:
       - Label:
           default: JFrog Product AMI info
         Parameters:
-          - InstanceOS
+          - InstanceOs
           - InstanceType
           - VolumeSize
           - JFrogProduct
@@ -24,16 +24,16 @@ Metadata:
       - Label:
           default: AWS Quick Start Configuration
         Parameters:
-          - QSS3BucketName
-          - QSS3KeyPrefix
+          - QsS3BucketName
+          - QsS3KeyPrefix
     ParameterLabels:
       KeyPairName:
         default: SSH key name
-      RemoteAccessCIDR:
+      RemoteAccessCidr:
         default: Remote access CIDR
       AvailabilityZone:
         default: Availability zone
-      InstanceOS:
+      InstanceOs:
         default: EC2 instance OS
       InstanceType:
         default: EC2 instance type
@@ -45,9 +45,9 @@ Metadata:
         default: Artifact version
       ArtifactRepoUrl:
         default: Artifact repo url
-      QSS3BucketName:
+      QsS3BucketName:
         default: Quick Start S3 bucket name
-      QSS3KeyPrefix:
+      QsS3KeyPrefix:
         default: Quick Start S3 key prefix
 
 Parameters:
@@ -59,7 +59,7 @@ Parameters:
     Description: The name of an existing public/private key pair, which allows you
       to securely connect to your instance after it launches.
     Type: AWS::EC2::KeyPair::KeyName
-  RemoteAccessCIDR:
+  RemoteAccessCidr:
     Description: The remote CIDR range for allowing SSH into the Bastion instance.
       We recommend that you set this value to a trusted IP range.
       For example, you might want to grant specific ranges inside your corporate network SSH access.
@@ -84,7 +84,7 @@ Parameters:
     Description: Base repo to be added to the system to install the RPM.
     Default: https://jfrog.bintray.com/artifactory-pro-rpms
     Type: String
-  InstanceOS:
+  InstanceOs:
     Description: The Linux distribution for the Amazon Machine Image (AMI) to be used for the bastion instances.
     AllowedValues:
       - "CentOS7HVM"
@@ -105,7 +105,7 @@ Parameters:
       Amazon Elastic Block Store (Amazon EBS) volumes of this size.
     Default: 200
     Type: Number
-  QSS3BucketName:
+  QsS3BucketName:
     Description: S3 bucket name for the Quick Start assets. This string can include
       numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start
       or end with a hyphen (-).
@@ -115,7 +115,7 @@ Parameters:
       (-).
     Default: aws-quickstart
     Type: String
-  QSS3KeyPrefix:
+  QsS3KeyPrefix:
     Description: S3 key prefix for the Quick Start assets. Quick Start key prefix
       can include numbers, lowercase letters, uppercase letters, hyphens (-), and
       forward slash (/).
@@ -130,24 +130,24 @@ Resources:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL:
-        Fn::Sub: https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/jfrog-ami-vpc.template.yaml
+        Fn::Sub: https://${QsS3BucketName}.s3.amazonaws.com/${QsS3KeyPrefix}templates/jfrog-ami-vpc.template.yaml
       Parameters:
         AvailabilityZone: !Ref AvailabilityZone
   AMIStack:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL:
-        Fn::Sub: https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/jfrog-ami-creation.template.yaml
+        Fn::Sub: https://${QsS3BucketName}.s3.amazonaws.com/${QsS3KeyPrefix}templates/jfrog-ami-creation.template.yaml
       Parameters:
         KeyPairName: !Ref KeyPairName
-        RemoteAccessCIDR: !Ref RemoteAccessCIDR
-        VPCID: !GetAtt VPCStack.Outputs.VPCID
-        PublicSubnet1ID: !GetAtt VPCStack.Outputs.PublicSubnetID
-        InstanceOS: !Ref InstanceOS
+        RemoteAccessCidr: !Ref RemoteAccessCidr
+        VpcId: !GetAtt VPCStack.Outputs.VpcId
+        PublicSubnet1Id: !GetAtt VPCStack.Outputs.PublicSubnetID
+        InstanceOs: !Ref InstanceOs
         InstanceType: !Ref InstanceType
         VolumeSize: !Ref VolumeSize
         JFrogProduct: !Ref JFrogProduct
         ArtifactVersion: !Ref ArtifactVersion
         ArtifactRepoUrl: !Ref ArtifactRepoUrl
-        QSS3BucketName: !Ref QSS3BucketName
-        QSS3KeyPrefix: !Ref QSS3KeyPrefix
+        QsS3BucketName: !Ref QsS3BucketName
+        QsS3KeyPrefix: !Ref QsS3KeyPrefix
