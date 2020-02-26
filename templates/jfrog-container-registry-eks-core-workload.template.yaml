@@ -1,0 +1,281 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Deploys JFrog Container Registry into an existing kubernetes cluster"
+Parameters:
+  KubeManifestLambdaArn:
+    Type: String
+  HelmLambdaArn:
+    Type: String
+  KubeConfigPath:
+    Type: String
+  KubeConfigKmsContext:
+    Type: String
+  KubeGetLambdaArn:
+    Type: String
+  NumberOfNodes:
+    Type: Number
+  AccessCidr:
+    Type: String
+  JcrIamAcessKey:
+    Type: String
+    NoEcho: 'true'
+  SecretAccessKey:
+    Type: String
+    NoEcho: 'true'
+  JcrS3Bucket:
+    Type: String
+  CertificateKey:
+    Type: String
+    NoEcho: 'true'
+  Certificate:
+    Type: String
+  DatabaseUser:
+    Type: String
+    NoEcho: 'true'
+  DatabasePassword:
+    Type: String
+    NoEcho: 'true'
+  DatabaseUrl:
+    Type: String
+  DatabaseDriver:
+    Type: String
+  DatabasePluginUrl:
+    Type: String
+  DatabasePlugin:
+    Type: String
+  DatabaseType:
+    Type: String
+  MasterKey:
+    Type: String
+    NoEcho: 'true'
+  JcrVersion:
+    Type: String
+  ProDockerRepo:
+    Type: String
+  NginxDockerRepo:
+    Type: String
+  JcrDeploymentSize:
+    Type: String
+  ReleaseStage:
+    Type: String
+    Default: BETA
+Mappings:
+  HelmRepoMap:
+    BETA:
+      RepoUrl: https://charts.jfrog.io/
+        #https://earlyaccess.jfrog.io/artifactory/helm/
+      HelmChartVersion: 2.0.8
+    GA:
+      RepoUrl: https://charts.jfrog.io/
+      HelmChartVersion: 2.0.8
+  DeploymentSize:
+    Large:
+      requestsMem: "6Gi"
+      requestsCpu: "4"
+      limitsMem: "10Gi"
+      limitsCpu: "8"
+      javaOptsXms: "6g"
+      javaOptsXmx: "8g"
+    Medium:
+      requestsMem: "4Gi"
+      requestsCpu: "2"
+      limitsMem: "8Gi"
+      limitsCpu: "6"
+      javaOptsXms: "4g"
+      javaOptsXmx: "6g"
+    Small:
+      requestsMem: "4Gi"
+      requestsCpu: "2"
+      limitsMem: "6Gi"
+      limitsCpu: "4"
+      javaOptsXms: "4g"
+      javaOptsXmx: "4g"
+
+Resources:
+  JcrNameSpace:
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeManifestLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Manifest:
+        kind: Namespace
+        apiVersion: v1
+        metadata:
+          name: jfrog-container-registry
+          labels:
+            app: jfrog-container-registry
+
+  JcrCertificateStore:
+    DependsOn: JcrNameSpace
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeManifestLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Manifest:
+        kind: Secret
+        apiVersion: v1
+        metadata:
+          name: artifactory-jcr-nginx-tls
+          namespace: jfrog-container-registry
+          labels:
+            app: jfrog-container-registry
+            chart: jfrog-container-registry
+        type: kubernetes.io/tls
+        data:
+          tls.crt:
+            Fn::Base64:
+              !Join ["\n", "Fn::Split": ["|", !Ref Certificate]]
+          tls.key:
+            Fn::Base64:
+              !Join ["\n", "Fn::Split": ["|", !Ref CertificateKey]]
+
+  JcrSecureStoreDB:
+    DependsOn: JcrNameSpace
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeManifestLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Manifest:
+        kind: Secret
+        apiVersion: v1
+        metadata:
+          name: artifactory-jcr-cluster-db
+          namespace: jfrog-container-registry
+          labels:
+            app: jfrog-container-registry
+            chart: jfrog-container-registry
+        type: Opaque
+        data:
+          db-user:
+            Fn::Base64:
+              !Sub ${DatabaseUser}
+          db-password:
+            Fn::Base64:
+              !Sub ${DatabasePassword}
+          db-url:
+            Fn::Base64:
+              !Sub ${DatabaseUrl}
+
+  JcrDeployment:
+    Type: "Custom::Helm"
+    DependsOn: JcrCertificateStore
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref HelmLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Namespace: jfrog-container-registry
+      Name: quickstart-jcr
+      Chart: jfrog/artifactory-jcr
+      RepoUrl: !FindInMap [HelmRepoMap, !Ref ReleaseStage, RepoUrl]
+      Version: !FindInMap [HelmRepoMap, !Ref ReleaseStage, HelmChartVersion]
+      ValueYaml: !Sub
+        - |
+          artifactory:
+            artifactory:
+              name: artifactory-jcr
+              image:
+                repository: ${ProDockerRepo}
+                version: ${JcrVersion}
+                pullPolicy: Always
+              deleteDBPropertiesOnStartup: true
+              masterKey: ${MasterKey}
+              preStartCommand: "mkdir -p /var/opt/jfrog/artifactory/bootstrap/artifactory/tomcat/lib/; wget -O  /var/opt/jfrog/artifactory/bootstrap/artifactory/tomcat/lib/${DatabasePlugin} ${DatabasePluginUrl}; mkdir /var/opt/jfrog/artifactory/etc/artifactory ; cp /bootstrap/artifactory/binarystore.xml /var/opt/jfrog/artifactory/etc/artifactory/binarystore.xml"
+              persistence:
+                enabled: false
+                type: aws-s3-v3
+                binarystoreXml: |
+                  <!-- AWS S3 V3 -->
+                  <config version="2">
+                      <chain>
+                          <provider id="cache-fs" type="cache-fs">
+                              <provider id="eventual" type="eventual">
+                                  <provider id="retry" type="retry">
+                                      <provider id="s3-storage-v3" type="s3-storage-v3"/>
+                                  </provider>
+                              </provider>
+                          </provider>
+                      </chain>
+
+                      <!-- Set max cache-fs size -->
+                      <provider id="cache-fs" type="cache-fs">
+                          <maxCacheSize>5e+10</maxCacheSize>
+                          <cacheProviderDir>cache</cacheProviderDir>
+                      </provider>
+                      <provider id="s3-storage-v3" type="s3-storage-v3">
+                          <testConnection>false</testConnection>
+                          <identity>${JcrIamAcessKey}</identity>
+                          <credential>${SecretAccessKey}</credential>
+                          <region>${AWS::Region}</region>
+                          <bucketName>${JcrS3Bucket}</bucketName>
+                          <path>artifactory/filestore</path>
+                          <endpoint></endpoint>
+                          <useInstanceCredentials>false</useInstanceCredentials>
+                          <usePresigning>false</usePresigning>
+                          <signatureExpirySeconds>300</signatureExpirySeconds>
+                      </provider>
+                  </config>
+              resources:
+                requests:
+                  memory: "${requests_memory}"
+                  cpu: "${requests_cpu}"
+                limits:
+                  memory: "${limits_memory}"
+                  cpu: "${limits_cpu}"
+              javaOpts:
+                xms: "${java_xms}"
+                xmx: "${java_xmx}"
+              nodeSelector:
+                partition: production
+            postgresql:
+              enabled: false
+            database:
+              type: ${DatabaseType}
+              driver: ${DatabaseDriver}
+              secrets:
+                user:
+                  name: artifactory-jcr-cluster-db
+                  key: "db-user"
+                password:
+                  name: artifactory-jcr-cluster-db
+                  key: "db-password"
+                url:
+                  name: artifactory-jcr-cluster-db
+                  key: "db-url"
+            nginx:
+              enabled: true
+              image:
+                repository: ${NginxDockerRepo}
+              replicaCount: ${NumberOfNodes}
+              service:
+                loadBalancerSourceRanges:  [ "${AccessCidr}" ]
+              tlsSecretName: artifactory-jcr-nginx-tls
+          postgresql:
+            enabled: false
+        - {
+           requests_memory: !FindInMap [DeploymentSize, !Ref JcrDeploymentSize, requestsMem],
+           requests_cpu: !FindInMap [DeploymentSize, !Ref JcrDeploymentSize, requestsCpu],
+           limits_memory: !FindInMap [DeploymentSize, !Ref JcrDeploymentSize, limitsMem],
+           limits_cpu: !FindInMap [DeploymentSize, !Ref JcrDeploymentSize, limitsCpu],
+           java_xms: !FindInMap [DeploymentSize, !Ref JcrDeploymentSize, javaOptsXms],
+           java_xmx: !FindInMap [DeploymentSize, !Ref JcrDeploymentSize, javaOptsXmx],
+          }
+  JcrIngressHostName:
+    DependsOn: JcrDeployment
+    Type: "Custom::KubeGet"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeGetLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Namespace: jfrog-container-registry
+      Name: svc/quickstart-jcr-artifactory-nginx
+      JsonPath: '{.status.loadBalancer.ingress[0].hostname}'
+Outputs:
+  JcrUrl:
+    Value: !Sub https://${JcrIngressHostName}

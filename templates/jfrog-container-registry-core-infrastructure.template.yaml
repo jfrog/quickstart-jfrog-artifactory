@@ -1,0 +1,224 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'JFrog Container Registry Quick Start core infrastructure deployment'
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  VpcCidr:
+    Description: CIDR block for the VPC
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+    ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16-28
+    Default: 10.0.0.0/16
+    Type: String
+  PrivateSubnet1Cidr:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+    ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16-28
+    Default: 10.0.0.0/19
+    Type: String
+  PrivateSubnet2Cidr:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+    ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16-28
+    Default: 10.0.32.0/19
+    Type: String
+  PrivateSubnet3Cidr:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+    ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16-28
+    Default: 10.0.64.0/19
+    Type: String
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+  DatabaseAllocatedStorage:
+    Type: Number
+  MultiAzDatabase:
+    Type: String
+  DatabaseEngine:
+    Type: String
+  DatabaseUser:
+    Type: String
+  DatabasePassword:
+    NoEcho: 'true'
+    Type: String
+  DatabaseInstance:
+    Type: String
+  DatabaseName:
+    Type: String
+  ReleaseStage:
+    Default: GA
+    Type: String
+
+Mappings:
+  DatabaseMap:
+    Postgres:
+      Name: postgresql
+      DatabaseVersion: 11.5
+      Driver: "org.postgresql.Driver"
+      Plugin: postgresql-42.2.9.jar
+      PluginURL: https://jdbc.postgresql.org/download/
+      port: "5432"
+      extraDBOps: ""
+    MySQL:
+      Name: mysql
+      DatabaseVersion: 5.7
+      Driver: "com.mysql.jdbc.Driver"
+      Plugin: mysql-connector-java-8.0.19.jar
+      PluginURL: https://bintray.com/artifact/download/bintray/jcenter/mysql/mysql-connector-java/8.0.19/
+      port: "3306"
+      extraDBOps: "?characterEncoding=UTF-8&elideSetAutoCommits=true"
+  ReleaseStageMap:
+    BETA:
+      ProDockerRepo: "solengha-docker-aws.jfrog.io/jfrog/artifactory-jcr"
+      NginxDockerRepo: "earlyaccess-docker.jfrog.io/jfrog/nginx-artifactory-pro"
+    GA:
+      ProDockerRepo: "docker.bintray.io/jfrog/artifactory-pro"
+      NginxDockerRepo: "docker.bintray.io/jfrog/nginx-artifactory-pro"
+Resources:
+  JcrDBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Private Subnets available to the RDS Instance(s)
+      SubnetIds: !Ref SubnetIds
+  JcrDB:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage: !Ref DatabaseAllocatedStorage
+      MultiAZ: !Ref MultiAzDatabase
+      Engine: !Ref DatabaseEngine
+      EngineVersion: !FindInMap
+        - DatabaseMap
+        - !Ref DatabaseEngine
+        - DatabaseVersion
+      MasterUsername: !Ref DatabaseUser
+      MasterUserPassword: !Ref DatabasePassword
+      DBInstanceClass: !Ref DatabaseInstance
+      DBName: !Ref DatabaseName
+      DBSubnetGroupName: !Ref  JcrDBSubnetGroup
+      VPCSecurityGroups:
+        - !Ref JcrDBSG
+  JcrDBSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      Tags:
+        - Key: Name
+          Value: artifactory-rds-sg
+      GroupDescription: SG for RDS Instance to allow communication from the Bastion and JCR servers.
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref VpcCidr
+        - IpProtocol: tcp
+          FromPort: !FindInMap
+            - DatabaseMap
+            - !Ref DatabaseEngine
+            - port
+          ToPort: !FindInMap
+            - DatabaseMap
+            - !Ref DatabaseEngine
+            - port
+          CidrIp: !Ref PrivateSubnet1Cidr
+        - IpProtocol: tcp
+          FromPort: !FindInMap
+            - DatabaseMap
+            - !Ref DatabaseEngine
+            - port
+          ToPort: !FindInMap
+            - DatabaseMap
+            - !Ref DatabaseEngine
+            - port
+          CidrIp: !Ref PrivateSubnet2Cidr
+        - IpProtocol: tcp
+          FromPort: !FindInMap
+            - DatabaseMap
+            - !Ref DatabaseEngine
+            - port
+          ToPort: !FindInMap
+            - DatabaseMap
+            - !Ref DatabaseEngine
+            - port
+          CidrIp: !Ref PrivateSubnet3Cidr
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+  JcrS3IamUser:
+    Type: AWS::IAM::User
+  JcrIamAcessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName: !Ref JcrS3IamUser
+  JcrS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: Private
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+  JcrS3IamPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: S3BucketPermissions
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: S3BucketPermissions
+            Effect: Allow
+            Action:
+              - s3:*
+            Resource:
+              - Fn::Join:
+                - ''
+                - - "arn:aws:s3:::"
+                  - !Ref JcrS3Bucket
+              - Fn::Join:
+                - ''
+                - - "arn:aws:s3:::"
+                  - !Ref JcrS3Bucket
+                  - "/*"
+      Users:
+        - !Ref JcrS3IamUser
+Outputs:
+  IamAcessKey:
+    Value: !Ref JcrIamAcessKey
+    Description: IAM Access key for the S3 Bucket
+  SecretAccessKey:
+    Value: !GetAtt JcrIamAcessKey.SecretAccessKey
+    Description: Secret Access key for S3 Bucket
+  S3Bucket:
+    Value: !Ref JcrS3Bucket
+    Description: Actual S3 bucket created for JCR
+  DatabaseDriver:
+    Value: !FindInMap [DatabaseMap, !Ref DatabaseEngine, Driver]
+  DatabasePlugin:
+    Value: !FindInMap [DatabaseMap, !Ref DatabaseEngine, Plugin]
+  DatabasePluginUrl:
+    Value: !Sub
+      - "${MainURL}${PluginVersion}"
+      - {
+        MainURL: !FindInMap [DatabaseMap, !Ref DatabaseEngine, PluginURL],
+        PluginVersion: !FindInMap [DatabaseMap, !Ref DatabaseEngine, Plugin]
+        }
+  DatabaseType:
+    Value: !FindInMap [DatabaseMap, !Ref DatabaseEngine, Name]
+  DatabaseUrl:
+    Value: !Sub
+      - "jdbc:${DatabaseType}://${JcrDBEndpointAddress}:${port}/${DatabaseName}${extraDBOps}"
+      - {
+        DatabaseType: !FindInMap [DatabaseMap, !Ref DatabaseEngine, Name],
+        JcrDBEndpointAddress: !GetAtt JcrDB.Endpoint.Address,
+        port: !FindInMap [DatabaseMap, !Ref DatabaseEngine, port],
+        extraDBOps: !FindInMap [DatabaseMap, !Ref DatabaseEngine, extraDBOps],
+        }
+  ProDockerRepo:
+    Value: !FindInMap [ReleaseStageMap, !Ref ReleaseStage, ProDockerRepo]
+  NginxDockerRepo:
+    Value: !FindInMap [ReleaseStageMap, !Ref ReleaseStage, NginxDockerRepo]
