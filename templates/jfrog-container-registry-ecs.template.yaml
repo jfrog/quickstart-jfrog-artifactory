@@ -1,43 +1,41 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "Deploys the ECS Artifactory Service and Task"
+Description: "Deploys the ECS Container Registry Service and Task"
 Parameters:
-  ECSCluster:
+  EcsCluster:
     Type: String
   ServiceName:
     Type: String
-  ArtifactoryTargetGroupArn:
+  JcrTargetGroupArn:
     Type: String
   MasterKey:
     Type: String
     NoEcho: 'true'
   ExtraJavaOptions:
     Type: String
-  ArtifactoryPrimary:
-    Type: String
   NumberNodes:
     Type: Number
-  DBURL:
+  DbUrl:
     Type: String
-  DBDriver:
+  DbDriver:
     Type: String
-  DBPluginURL:
+  DbPluginUrl:
     Type: String
-  DBPlugin:
+  DbPlugin:
     Type: String
-  ProDockerRepoURL:
+  ProDockerRepoUrl:
     Type: String
-  NginxDockerRepoURL:
+  NginxDockerRepoUrl:
     Type: String
-  DBType:
+  DbType:
     Type: String
   DatabaseUser:
     Type: String
   DatabasePassword:
     Type: String
     NoEcho: 'true'
-  ECSRoleArn:
+  EcsRoleArn:
     Type: String
-  ECSLogGroup:
+  EcsLogGroup:
     Type: String
   YQVersion:
     Default: "3.0.1"
@@ -51,19 +49,19 @@ Resources:
   ECSService:
     Type: AWS::ECS::Service
     Properties:
-      Cluster: !Ref ECSCluster
+      Cluster: !Ref EcsCluster
       ServiceName: !Ref ServiceName
       LaunchType: EC2
       DesiredCount: !Ref NumberNodes
       LoadBalancers:
         - ContainerName: nginx
           ContainerPort: 443
-          TargetGroupArn: !Ref ArtifactoryTargetGroupArn
+          TargetGroupArn: !Ref JcrTargetGroupArn
       TaskDefinition:
-        Ref: ArtifactoryTaskDefinition
+        Ref: JcrTaskDefinition
       HealthCheckGracePeriodSeconds: 300
 
-  ArtifactoryTaskDefinition:
+  JcrTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
       Cpu: "2048"
@@ -72,7 +70,7 @@ Resources:
       NetworkMode: bridge
       RequiresCompatibilities:
         - EC2
-      ExecutionRoleArn: !Ref ECSRoleArn
+      ExecutionRoleArn: !Ref EcsRoleArn
       Volumes:
         - Name: etc
           Host:
@@ -87,7 +85,7 @@ Resources:
           Host:
             SourcePath: /data/jfrog/nginx
       ContainerDefinitions:
-        - Name: artifactory
+        - Name: jcr
           EntryPoint:
             - /bin/bash
             - "-c"
@@ -96,11 +94,11 @@ Resources:
                 wget https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}scripts/configure_ecs_container.sh -O /tmp/source;
                 echo '' >> /tmp/source;
                 echo export HA_HOST_IP=`wget -q -O - http://169.254.169.254/latest/meta-data/local-ipv4` >> /tmp/source;
-                echo wget -O /var/opt/jfrog/artifactory/bootstrap/artifactory/tomcat/lib/${DBPlugin} ${DBPluginURL} >> /tmp/source;
+                echo wget -O /var/opt/jfrog/artifactory/bootstrap/artifactory/tomcat/lib/${DbPlugin} ${DbPluginUrl} >> /tmp/source;
                 echo /entrypoint-artifactory.sh >> /tmp/source;
                 chmod +x /tmp/source;
                 /tmp/source
-          Image: !Sub ${ProDockerRepoURL}
+          Image: !Sub ${ProDockerRepoUrl}
           PortMappings:
             - ContainerPort: 8081
               HostPort: 8081
@@ -138,28 +136,26 @@ Resources:
               Value: !Ref ExtraJavaOptions
             - Name: ARTIFACTORY_MASTER_KEY
               Value: !Ref MasterKey
-            - Name: HA_IS_PRIMARY
-              Value: !Ref ArtifactoryPrimary
             - Name: DB_URL
-              Value: !Ref DBURL
+              Value: !Ref DbUrl
             - Name: DB_TYPE
-              Value: !Ref DBType
+              Value: !Ref DbType
             - Name: DB_USER
               Value: !Ref DatabaseUser
             - Name: DB_PASSWORD
               Value: !Ref DatabasePassword
             - Name: DB_DRIVER
-              Value: !Ref DBDriver
+              Value: !Ref DbDriver
             - Name: YQ_VERSION
               Value: !Ref YQVersion
           LogConfiguration:
             LogDriver: awslogs
             Options:
-              awslogs-group: !Ref ECSLogGroup
+              awslogs-group: !Ref EcsLogGroup
               awslogs-region: !Ref AWS::Region
-              awslogs-stream-prefix: artifactory
+              awslogs-stream-prefix: jcr
         - Name: nginx
-          Image: !Sub ${NginxDockerRepoURL}
+          Image: !Sub ${NginxDockerRepoUrl}
           PortMappings:
             - ContainerPort: 80
               HostPort: 80
@@ -170,9 +166,9 @@ Resources:
           Essential: false
           DependsOn:
             - Condition: HEALTHY
-              ContainerName: artifactory
+              ContainerName: jcr
           Links:
-            - artifactory:artifactory
+            - jcr:jcr
           MountPoints:
             - ContainerPath: /var/opt/jfrog/nginx
               ReadOnly: False
@@ -186,14 +182,14 @@ Resources:
               HardLimit: 40000
           Environment:
             - Name: ART_BASE_URL
-              Value: http://artifactory:8081/artifactory
+              Value: http://jcr:8081/artifactory
             - Name: SSL
               Value: "true"
           LogConfiguration:
             LogDriver: awslogs
             Options:
               awslogs-group:
-                Ref: ECSLogGroup
+                Ref: EcsLogGroup
               awslogs-region:
                 Ref: AWS::Region
               awslogs-stream-prefix: nginx
