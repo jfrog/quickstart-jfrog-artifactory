@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'JFrog Container Registry Quick Start Deployment'
+Description: 'JFrog Container Registry Quick Start core infrastructure deployment'
 Parameters:
   VpcId:
     Type: AWS::EC2::VPC::Id
@@ -26,9 +26,9 @@ Parameters:
     Type: String
   SubnetIds:
     Type: List<AWS::EC2::Subnet::Id>
-  DBAllocatedStorage:
+  DatabaseAllocatedStorage:
     Type: Number
-  MultiAZDatabase:
+  MultiAzDatabase:
     Type: String
   DatabaseEngine:
     Type: String
@@ -71,16 +71,16 @@ Mappings:
       ProDockerRepo: "docker.bintray.io/jfrog/artifactory-pro"
       NginxDockerRepo: "docker.bintray.io/jfrog/nginx-artifactory-pro"
 Resources:
-  JCRDBSubnetGroup:
+  JcrDBSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
       DBSubnetGroupDescription: Private Subnets available to the RDS Instance(s)
       SubnetIds: !Ref SubnetIds
-  JCRDB:
+  JcrDB:
     Type: AWS::RDS::DBInstance
     Properties:
-      AllocatedStorage: !Ref DBAllocatedStorage
-      MultiAZ: !Ref MultiAZDatabase
+      AllocatedStorage: !Ref DatabaseAllocatedStorage
+      MultiAZ: !Ref MultiAzDatabase
       Engine: !Ref DatabaseEngine
       EngineVersion: !FindInMap
         - DatabaseMap
@@ -90,10 +90,10 @@ Resources:
       MasterUserPassword: !Ref DatabasePassword
       DBInstanceClass: !Ref DatabaseInstance
       DBName: !Ref DatabaseName
-      DBSubnetGroupName: !Ref  JCRDBSubnetGroup
+      DBSubnetGroupName: !Ref  JcrDBSubnetGroup
       VPCSecurityGroups:
-        - !Ref JCRDBSG
-  JCRDBSG:
+        - !Ref JcrDBSG
+  JcrDBSG:
     Type: AWS::EC2::SecurityGroup
     Properties:
       Tags:
@@ -149,13 +149,13 @@ Resources:
           FromPort: 443
           ToPort: 443
           CidrIp: 0.0.0.0/0
-  JCRS3IAMUser:
+  JcrS3IamUser:
     Type: AWS::IAM::User
-  JCRIAMAcessKey:
+  JcrIamAcessKey:
     Type: AWS::IAM::AccessKey
     Properties:
-      UserName: !Ref JCRS3IAMUser
-  JCRS3Bucket:
+      UserName: !Ref JcrS3IamUser
+  JcrS3Bucket:
     Type: AWS::S3::Bucket
     Properties:
       AccessControl: Private
@@ -163,7 +163,7 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
-  JCRS3IAMPolicy:
+  JcrS3IamPolicy:
     Type: AWS::IAM::Policy
     Properties:
       PolicyName: S3BucketPermissions
@@ -178,43 +178,43 @@ Resources:
               - Fn::Join:
                 - ''
                 - - "arn:aws:s3:::"
-                  - !Ref JCRS3Bucket
+                  - !Ref JcrS3Bucket
               - Fn::Join:
                 - ''
                 - - "arn:aws:s3:::"
-                  - !Ref JCRS3Bucket
+                  - !Ref JcrS3Bucket
                   - "/*"
       Users:
-        - !Ref JCRS3IAMUser
+        - !Ref JcrS3IamUser
 Outputs:
-  IAMAcessKey:
-    Value: !Ref JCRIAMAcessKey
+  IamAcessKey:
+    Value: !Ref JcrIamAcessKey
     Description: IAM Access key for the S3 Bucket
   SecretAccessKey:
-    Value: !GetAtt JCRIAMAcessKey.SecretAccessKey
+    Value: !GetAtt JcrIamAcessKey.SecretAccessKey
     Description: Secret Access key for S3 Bucket
   S3Bucket:
-    Value: !Ref JCRS3Bucket
+    Value: !Ref JcrS3Bucket
     Description: Actual S3 bucket created for JCR
-  DBDriver:
+  DatabaseDriver:
     Value: !FindInMap [DatabaseMap, !Ref DatabaseEngine, Driver]
-  DBPlugin:
+  DatabasePlugin:
     Value: !FindInMap [DatabaseMap, !Ref DatabaseEngine, Plugin]
-  DBPluginURL:
+  DatabasePluginUrl:
     Value: !Sub
       - "${MainURL}${PluginVersion}"
       - {
         MainURL: !FindInMap [DatabaseMap, !Ref DatabaseEngine, PluginURL],
         PluginVersion: !FindInMap [DatabaseMap, !Ref DatabaseEngine, Plugin]
         }
-  DBType:
+  DatabaseType:
     Value: !FindInMap [DatabaseMap, !Ref DatabaseEngine, Name]
-  DBURL:
+  DatabaseUrl:
     Value: !Sub
-      - "jdbc:${DBType}://${JCRDBEndpointAddress}:${port}/${DatabaseName}${extraDBOps}"
+      - "jdbc:${DatabaseType}://${JcrDBEndpointAddress}:${port}/${DatabaseName}${extraDBOps}"
       - {
-        DBType: !FindInMap [DatabaseMap, !Ref DatabaseEngine, Name],
-        JCRDBEndpointAddress: !GetAtt JCRDB.Endpoint.Address,
+        DatabaseType: !FindInMap [DatabaseMap, !Ref DatabaseEngine, Name],
+        JcrDBEndpointAddress: !GetAtt JcrDB.Endpoint.Address,
         port: !FindInMap [DatabaseMap, !Ref DatabaseEngine, port],
         extraDBOps: !FindInMap [DatabaseMap, !Ref DatabaseEngine, extraDBOps],
         }
