@@ -1,9 +1,9 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "Deploys the EC2 Autoscaling, LaunchConfig and Instance for JCR"
+Description: "Deploys the EC2 Autoscaling, LaunchConfig and Instance for JFrog Container Registry"
 Parameters:
-  PrivateSubnet1ID:
+  PrivateSubnet1Id:
     Type: 'AWS::EC2::Subnet::Id'
-  PrivateSubnet2ID:
+  PrivateSubnet2Id:
     Type: 'AWS::EC2::Subnet::Id'
   MinScalingNodes:
     Type: Number
@@ -15,11 +15,11 @@ Parameters:
     Type: String
   AmiId:
     Type: String
-  QSS3BucketName:
+  QsS3BucketName:
     Type: String
-  QSS3KeyPrefix:
+  QsS3KeyPrefix:
     Type: String
-  JCRServerName:
+  JcrServerName:
     Type: String
   Certificate:
     Type: String
@@ -28,23 +28,23 @@ Parameters:
     NoEcho: 'true'
   CertificateDomain:
     Type: String
-  JCRIAMAcessKey:
+  JcrIamAcessKey:
     Type: String
     NoEcho: 'true'
   SecretAccessKey:
     Type: String
     NoEcho: 'true'
-  JCRS3Bucket:
+  JcrS3Bucket:
     Type: String
-  DBURL:
+  DatabaseUrl:
     Type: String
-  DBDriver:
+  DatabaseDriver:
     Type: String
-  DBPluginURL:
+  DatabasePluginUrl:
     Type: String
-  DBPlugin:
+  DatabasePlugin:
     Type: String
-  DBType:
+  DatabaseType:
     Type: String
   DatabaseUser:
     Type: String
@@ -56,7 +56,7 @@ Parameters:
   MasterKey:
     Type: String
     NoEcho: 'true'
-  JCRVersion:
+  JcrVersion:
     Type: String
   KeyPairName:
     Type: AWS::EC2::KeyPair::KeyName
@@ -111,19 +111,20 @@ Mappings:
     us-west-1:
       AMZNLINUXHVM: ami-04bc3da8f14823e88
     us-west-2:
+      "710": ami-07f039f47eaf2a134
       "720": ami-00e553f639e682cb8
 Conditions:
   GovCloudCondition: !Equals
     - !Ref 'AWS::Region'
     - us-gov-west-1
 Resources:
-  JCRScalingGroup:
+  JcrScalingGroup:
     Type: 'AWS::AutoScaling::AutoScalingGroup'
     Properties:
-      LaunchConfigurationName: !Ref JCRLaunchConfiguration
+      LaunchConfigurationName: !Ref JcrLaunchConfiguration
       VPCZoneIdentifier:
-        - !Ref PrivateSubnet1ID
-        - !Ref PrivateSubnet2ID
+        - !Ref PrivateSubnet1Id
+        - !Ref PrivateSubnet2Id
       MinSize: !Ref MinScalingNodes
       MaxSize: !Ref MaxScalingNodes
       Cooldown: '300'
@@ -142,7 +143,7 @@ Resources:
         Count: 1
         Timeout: PT30M
 
-  JCRLaunchConfiguration:
+  JcrLaunchConfiguration:
       Type: 'AWS::AutoScaling::LaunchConfiguration'
       Metadata:
         'AWS::CloudFormation::Authentication':
@@ -151,7 +152,7 @@ Resources:
             roleName:
               - !Ref HostRole
             buckets:
-              - !Ref QSS3BucketName
+              - !Ref QsS3BucketName
         'AWS::CloudFormation::Init':
           configSets:
             jcr_install:
@@ -164,30 +165,30 @@ Resources:
                     # Base install for JCR
                     - import_playbook: site-jcr.yml
                       vars:
-                        jcr_server_name: ${JCRServerName}
-                        s3_endpoint: s3.${AWS::Region}.amazonaws.com
-                        s3_access_key: ${JCRIAMAcessKey}
+                        jcr_server_name: ${JcrServerName}
+                        s3_region: ${AWS::Region}
+                        s3_access_key: ${JcrIamAcessKey}
                         s3_access_secret_key: ${SecretAccessKey}
-                        s3_bucket: ${JCRS3Bucket}
+                        s3_bucket: ${JcrS3Bucket}
                         certificate: ${Certificate}
                         certificate_key: ${CertificateKey}
                         certificate_domain: ${CertificateDomain}
                         ssl_dir: /etc/pki/tls/certs
-                        db_type: ${DBType}
-                        db_driver: ${DBDriver}
-                        db_url: ${DBURL}
+                        db_type: ${DatabaseType}
+                        db_driver: ${DatabaseDriver}
+                        db_url: ${DatabaseUrl}
                         db_user: ${DatabaseUser}
                         db_password: ${DatabasePassword}
                         extra_java_opts: ${ExtraJavaOptions}
                         jcr_master_key: ${MasterKey}
-                        jcr_version: ${JCRVersion}
+                        jcr_version: ${JcrVersion}
                         jcr_keystore:
                           path: /opt/jfrog/artifactory/app/third-party/java/lib/security/cacerts
                           default_password: changeit
                           new_keystore_pass: ${KeystorePassword}
                         jcr_java_db_drivers:
-                          - name: ${DBPlugin}
-                            url: ${DBPluginURL}
+                          - name: ${DatabasePlugin}
+                            url: ${DatabasePluginUrl}
                             owner: artifactory
                             group: artifactory
                 mode: "0400"
@@ -233,7 +234,7 @@ Resources:
               {
 
               cfn-signal -e 1 --stack ${AWS::StackName} --region ${AWS::Region}
-              --resource JCRScalingGroup
+              --resource JcrScalingGroup
 
               exit 1
 
@@ -244,13 +245,13 @@ Resources:
               {
 
               cfn-signal -e 0 --stack ${AWS::StackName} --region ${AWS::Region}
-              --resource JCRScalingGroup
+              --resource JcrScalingGroup
 
               exit 0
 
               }
 
-              S3URI=https://${QSS3BucketName}.${S3Region}.amazonaws.com/${QSS3KeyPrefix}
+              S3URI=https://${QsS3BucketName}.${S3Region}.amazonaws.com/${QsS3KeyPrefix}
 
               yum install -y git
 
@@ -284,10 +285,10 @@ Resources:
 
               mkdir ~/.jcr_ansible
 
-              aws s3 sync s3://${QSS3BucketName}/${QSS3KeyPrefix}scripts/ ~/.jcr_ansible/
+              aws s3 sync s3://${QsS3BucketName}/${QsS3KeyPrefix}scripts/ ~/.jcr_ansible/
 
               cfn-init -v --stack ${AWS::StackName} --resource
-              JCRLaunchConfiguration --configsets jcr_install
+              JcrLaunchConfiguration --configsets jcr_install
               --region ${AWS::Region} || cfn_fail
 
               export ANSIBLE_VAULT_PASSWORD_FILE="/root/.vault_pass.txt"

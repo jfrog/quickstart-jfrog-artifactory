@@ -133,8 +133,8 @@ Use the following Curl|Bash script (Feel free to look inside first) to "install"
 Please also verify the `.taskcat.yml` is updated with the region you wish to deploy to. The rest of the parameters should be answered in the `.taskcat.yml` for variables needed. Then a `.taskcat_overrides.yml` needs to be created to override any parameters with "override" for their value. as follows:
 
     bash
-    RemoteAccessCIDR: `curl -v4 ifconfig.io`
-    AccessCIDR: `curl -v4 ifconfig.io`
+    RemoteAccessCidr: `curl -v4 ifconfig.io`
+    AccessCidr: `curl -v4 ifconfig.io`
     KeyPairName: `your-keypair`
     MasterKey: 1ce2be4490ca2c662cb79636cf9b7b8e
     SMLicenseCertName: jfrog-artifactory

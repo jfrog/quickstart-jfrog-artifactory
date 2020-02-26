@@ -47,7 +47,7 @@ Example Playbook
     artifactory_server_name: ${ArtifactoryServerName}
     certificate_domain: ${CertificateDomain}
     s3_endpoint: s3.${AWS::Region}.amazonaws.com
-    s3_access_key: ${ArtifactoryIAMAcessKey}
+    s3_access_key: ${ArtifactoryIamAcessKey}
     s3_access_secret_key: ${SecretAccessKey}
     s3_bucket: ${ArtifactoryS3Bucket}
     certificate_key: ${CertificateKey}

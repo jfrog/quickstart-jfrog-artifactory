@@ -25,7 +25,7 @@ Metadata:
           - BastionInstanceType
           - BastionOS
           - BastionRootVolumeSize
-          - BastionEnableTCPForwarding
+          - BastionEnableTcpForwarding
           - NumBastionHosts
           - BastionEnableX11Forwarding
       - Label:
@@ -54,8 +54,8 @@ Metadata:
           - DatabaseUser
           - DatabasePassword
           - DatabaseInstance
-          - DBAllocatedStorage
-          - MultiAZDatabase
+          - DatabaseAllocatedStorage
+          - MultiAzDatabase
       - Label:
           default: AWS Quick Start Configuration
         Parameters:
@@ -86,7 +86,7 @@ Metadata:
         default: Bastion instance type
       BastionRootVolumeSize:
         default: Bastion root volume size
-      BastionEnableTCPForwarding:
+      BastionEnableTcpForwarding:
         default: Bastion enable TCP forwarding
       BastionEnableX11Forwarding:
         default: Bastion enable X11 forwarding
@@ -128,9 +128,9 @@ Metadata:
         default: Database password
       DatabaseInstance:
         default: Database instance type
-      DBAllocatedStorage:
+      DatabaseAllocatedStorage:
         default: Database allocated storage
-      MultiAZDatabase:
+      MultiAzDatabase:
         default: High available database
       QSS3BucketName:
         default: Quick Start S3 bucket name
@@ -220,7 +220,7 @@ Parameters:
     Description: The size of the root volume on the bastion instances.
     Default: 10
     Type: Number
-  BastionEnableTCPForwarding:
+  BastionEnableTcpForwarding:
     Description: Choose whether to enable TCPForwarding via the bootstrapping of the bastion instance
       or not.
     AllowedValues:
@@ -399,13 +399,13 @@ Parameters:
     ConstraintDescription: Must be a valid database Instance Type.
     Default: db.m4.large
     Type: String
-  DBAllocatedStorage:
+  DatabaseAllocatedStorage:
     Description: The size in GB of the available storage for the database instance.
     MinValue: 5
     MaxValue: 1024
     Default: 10
     Type: Number
-  MultiAZDatabase:
+  MultiAzDatabase:
     Description: Choose false to create an Amazon RDS instance in a single Availability Zone.
     ConstraintDescription: True or False
     AllowedValues:
@@ -475,7 +475,7 @@ Resources:
         ProvisionBastionHost: !Ref ProvisionBastionHost
         BastionInstanceType: !Ref BastionInstanceType
         BastionRootVolumeSize: !Ref BastionRootVolumeSize
-        BastionEnableTCPForwarding: !Ref BastionEnableTCPForwarding
+        BastionEnableTcpForwarding: !Ref BastionEnableTcpForwarding
         BastionEnableX11Forwarding: !Ref BastionEnableX11Forwarding
         BastionOS: !Ref BastionOS
         NumBastionHosts: !Ref NumBastionHosts
@@ -496,8 +496,8 @@ Resources:
         DatabaseUser: !Ref DatabaseUser
         DatabasePassword: !Ref DatabasePassword
         DatabaseInstance: !Ref DatabaseInstance
-        DBAllocatedStorage: !Ref DBAllocatedStorage
-        MultiAZDatabase: !Ref MultiAZDatabase
+        DatabaseAllocatedStorage: !Ref DatabaseAllocatedStorage
+        MultiAzDatabase: !Ref MultiAzDatabase
         QSS3BucketName: !Ref QSS3BucketName
         QSS3KeyPrefix: !Ref QSS3KeyPrefix
 
