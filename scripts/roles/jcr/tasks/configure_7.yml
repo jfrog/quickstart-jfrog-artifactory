@@ -1,7 +1,7 @@
 ---
 
 # Tasks to configure Artifactory JCR version 7
-- name: Template of the properties and certs as requires for Artifactory
+- name: Template of the properties and certs as required by Artifactory
   template:
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"

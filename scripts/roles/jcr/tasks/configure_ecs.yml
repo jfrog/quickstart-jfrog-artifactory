@@ -20,7 +20,7 @@
   set_fact:
     artifactory_tomcat_loc: /data/jfrog/artifactory/plugins/
 
-- name: Template of the properties as requires for Artifactory
+- name: Template of the properties as required by Artifactory
   template:
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"
@@ -30,8 +30,6 @@
   loop:
     - src: binarystore.xml.j2
       dest: /data/jfrog/artifactory/etc/binarystore.xml
-    - src: artifactory.cluster.license.j2
-      dest: /data/jfrog/artifactory/etc/artifactory.cluster.license
 
 - name: All File/Folders required for Artifactory configuration
   file:
@@ -45,7 +43,7 @@
     - path: /data/jfrog/nginx/conf.d             # Mapped to /var/opt/jfrog/nginx
       state: directory
 
-- name: Template nginx files as requires for Artifactory
+- name: Template nginx files as required by Artifactory
   template:
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"
@@ -57,7 +55,7 @@
       dest: "{{ ssl_dir }}cert.pem"
     - src: certificate.key.j2
       dest: "{{ key_dir }}cert.key"
-    - src: artifactory.conf.j2
+    - src: jcr.conf.j2
       dest: /data/jfrog/nginx/conf.d/artifactory.conf
 
 - name: Copy all static files required for Artifactory
@@ -71,7 +69,4 @@
     - src: inactiveServerCleaner.groovy
       dest: /data/jfrog/artifactory/tmp/plugins/inactiveServerCleaner.groovy
       mode: '0777'
-  when: artifactory_major_verion|int == 6
-
-
-
+  when: jcr_major_verion|int == 6
