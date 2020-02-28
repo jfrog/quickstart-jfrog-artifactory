@@ -457,7 +457,7 @@ Resources:
         BastionAMIOS: !Ref BastionOs
         EnableTCPForwarding: !Ref BastionEnableTcpForwarding
         EnableX11Forwarding: !Ref BastionEnableX11Forwarding
-        AlternativeIAMRole: !Ref BastionRole
+        AlternativeIAMRole: !Ref JcrBastionRole
         NumBastionHosts: !Ref NumBastionHosts
 
   JcrCoreInfraStack:
@@ -652,5 +652,5 @@ Outputs:
   BastionIp:
     Value: !If
       - EnableBastion
-      - !GetAtt BastionStack.Outputs.EIP1
+      - !GetAtt JcrBastionStack.Outputs.EIP1
       - ""

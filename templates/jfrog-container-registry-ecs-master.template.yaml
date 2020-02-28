@@ -39,9 +39,8 @@ Metadata:
         Parameters:
           - JcrVersion
           - ReleaseStage
-          - NumberOfSecondary
           - NumberOfEC2Nodes
-          - SMCertName
+          - SmCertName
           - JcrServerName
           - MasterKey
           - ExtraJavaOptions
@@ -59,8 +58,8 @@ Metadata:
       - Label:
           default: AWS Quick Start Configuration
         Parameters:
-          - QSS3BucketName
-          - QSS3KeyPrefix
+          - QsS3BucketName
+          - QsS3KeyPrefix
     ParameterLabels:
       KeyPairName:
         default: SSH key name
@@ -98,8 +97,6 @@ Metadata:
         default: Container Registry version
       ReleaseStage:
         default: Release stage of the product to deploy
-      NumberOfSecondary:
-        default: Number of secondary instances
       NumberOfEC2Nodes:
         default: Number of EC2 nodes
       ClusterName:
@@ -108,7 +105,7 @@ Metadata:
         default: EC2 instance type
       VolumeSize:
         default: EBS Root volume size
-      SMCertName:
+      SmCertName:
         default: Container Registry licenses and certificate secret name
       JcrServerName:
         default: Container Registry server name
@@ -132,9 +129,9 @@ Metadata:
         default: Database allocated storage
       MultiAzDatabase:
         default: High available database
-      QSS3BucketName:
+      QsS3BucketName:
         default: Quick Start S3 bucket name
-      QSS3KeyPrefix:
+      QsS3KeyPrefix:
         default: Quick Start S3 key prefix
 Parameters:
   KeyPairName:
@@ -280,27 +277,15 @@ Parameters:
     Description: The number of EC2 nodes to create for the ECS cluster. There must be
       enough nodes to run the number of secondaries plus the primary task.
     AllowedValues:
-      - 3
-      - 4
-      - 5
-      - 6
-      - 7
-      - 8
-    Default: 3
-    Type: Number
-  NumberOfSecondary:
-    Description: The number of secondary Container Registry servers to complete your
-      HA deployment. To fit the Container Registry best practices, the minimum number
-      is two; the maximum is seven. Do not select more than instances than you
-      have licenses for.
-    AllowedValues:
+      - 1
       - 2
       - 3
       - 4
       - 5
       - 6
       - 7
-    Default: 2
+      - 8
+    Default: 1
     Type: Number
   JcrVersion:
     Description: The version of Container Registry that you want to deploy into the Quick Start.
@@ -317,7 +302,7 @@ Parameters:
       - "BETA"
     Default: "GA"
     Type: String
-  SMCertName:
+  SmCertName:
     Description: The secret name created in AWS Secrets Manager which contains the SSL certificate, certificate key, and Container Registry licenses.
     Type: String
   JcrServerName:
@@ -413,7 +398,7 @@ Parameters:
       - "false"
     Default: "true"
     Type: String
-  QSS3BucketName:
+  QsS3BucketName:
     Description: S3 bucket name for the Quick Start assets. This string can include
       numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start
       or end with a hyphen (-).
@@ -423,7 +408,7 @@ Parameters:
       (-).
     Default: aws-quickstart
     Type: String
-  QSS3KeyPrefix:
+  QsS3KeyPrefix:
     Description: S3 key prefix for the Quick Start assets. Quick Start key prefix
       can include numbers, lowercase letters, uppercase letters, hyphens (-), and
       forward slash (/).
@@ -436,7 +421,7 @@ Resources:
   JcrVpcStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}submodules/quickstart-aws-vpc/templates/aws-vpc.template
+      TemplateURL: !Sub https://${QsS3BucketName}.s3.amazonaws.com/${QsS3KeyPrefix}submodules/quickstart-aws-vpc/templates/aws-vpc.template
       Parameters:
         AvailabilityZones:
           Fn::Join:
@@ -459,7 +444,7 @@ Resources:
   JcrExistingVpcStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/jfrog-container-registry-ecs-existing-vpc.template.yaml'
+      TemplateURL: !Sub 'https://${QsS3BucketName}.s3.amazonaws.com/${QsS3KeyPrefix}templates/jfrog-container-registry-ecs-existing-vpc.template.yaml'
       Parameters:
         KeyPairName: !Ref KeyPairName
         VpcId: !GetAtt JcrVpcStack.Outputs.VPCID
@@ -482,11 +467,10 @@ Resources:
         ClusterName: !Ref ClusterName
         InstanceType: !Ref InstanceType
         VolumeSize: !Ref VolumeSize
-        NumberOfSecondary: !Ref NumberOfSecondary
         NumberOfEC2Nodes: !Ref NumberOfEC2Nodes
         JcrVersion: !Ref JcrVersion
         ReleaseStage: !Ref ReleaseStage
-        SMCertName: !Ref SMCertName
+        SmCertName: !Ref SmCertName
         JcrServerName: !Ref JcrServerName
         MasterKey: !Ref MasterKey
         ExtraJavaOptions: !Ref ExtraJavaOptions
@@ -498,8 +482,8 @@ Resources:
         DatabaseInstance: !Ref DatabaseInstance
         DatabaseAllocatedStorage: !Ref DatabaseAllocatedStorage
         MultiAzDatabase: !Ref MultiAzDatabase
-        QSS3BucketName: !Ref QSS3BucketName
-        QSS3KeyPrefix: !Ref QSS3KeyPrefix
+        QsS3BucketName: !Ref QsS3BucketName
+        QsS3KeyPrefix: !Ref QsS3KeyPrefix
 
 Outputs:
   JcrUrl:

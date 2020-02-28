@@ -23,8 +23,6 @@ Parameters:
     Type: String
   DeploymentTag:
     Type: String
-  NumberOfSecondary:
-    Type: Number
   JcrServerName:
     Type: String
   Certificate:
@@ -78,9 +76,9 @@ Parameters:
     Description: Ansiblevault Password to secure the artifactory.yml
     NoEcho: 'true'
     Type: String
-  QSS3BucketName:
+  QsS3BucketName:
     Type: String
-  QSS3KeyPrefix:
+  QsS3KeyPrefix:
     Type: String
 Mappings:
   AWSAMIRegionMap:
@@ -211,7 +209,7 @@ Resources:
           roleName:
             - !Ref ECSRole
           buckets:
-            - !Ref QSS3BucketName
+            - !Ref QsS3BucketName
       'AWS::CloudFormation::Init':
         configSets:
           artifactory_install:
@@ -229,7 +227,7 @@ Resources:
                     jcr_hostname: artifactory
                     ssl_dir: /data/jfrog/nginx/ssl/
                     key_dir: /data/jfrog/nginx/ssl/
-                    s3_endpoint: s3.${AWS::Region}.amazonaws.com
+                    s3_region: ${AWS::Region}
                     s3_access_key: ${JcrIamAcessKey}
                     s3_access_secret_key: ${SecretAccessKey}
                     s3_bucket: ${JcrS3Bucket}
@@ -299,7 +297,7 @@ Resources:
 
             echo ECS_CLUSTER=${ClusterName} >> /etc/ecs/ecs.config
 
-            S3URI=https://${QSS3BucketName}.${S3Region}.amazonaws.com/${QSS3KeyPrefix}
+            S3URI=https://${QsS3BucketName}.${S3Region}.amazonaws.com/${QsS3KeyPrefix}
 
             yum install -y git https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.amzn1.noarch.rpm python3-pip
 
@@ -332,7 +330,7 @@ Resources:
 
             mkdir ~/.artifactory_ansible
 
-            aws s3 sync s3://${QSS3BucketName}/${QSS3KeyPrefix}scripts/ ~/.artifactory_ansible/
+            aws s3 sync s3://${QsS3BucketName}/${QsS3KeyPrefix}scripts/ ~/.artifactory_ansible/
 
             cfn-init -v --stack ${AWS::StackName} --resource
             JcrLaunchConfiguration --configsets artifactory_install
@@ -359,7 +357,7 @@ Resources:
     DependsOn: JcrScalingGroup
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/jfrog-container-registry-ecs.template.yaml'
+      TemplateURL: !Sub 'https://${QsS3BucketName}.s3.amazonaws.com/${QsS3KeyPrefix}templates/jfrog-container-registry-ecs.template.yaml'
       Parameters:
         EcsCluster: !Ref ClusterName # In case we do not build the cluster we still require the Name of the cluster built.
         ServiceName: Jfrog-Container-Registry
@@ -379,5 +377,5 @@ Resources:
         EcsLogGroup: !Ref EcsLogGroup
         EcsRoleArn:
           Fn::GetAtt: ECSRole.Arn
-        QSS3BucketName: !Ref QSS3BucketName
-        QSS3KeyPrefix: !Ref QSS3KeyPrefix
+        QsS3BucketName: !Ref QsS3BucketName
+        QsS3KeyPrefix: !Ref QsS3KeyPrefix

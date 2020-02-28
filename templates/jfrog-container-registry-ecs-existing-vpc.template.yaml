@@ -43,9 +43,8 @@ Metadata:
         Parameters:
           - JcrVersion
           - ReleaseStage
-          - NumberOfSecondary
           - NumberOfEC2Nodes
-          - SMCertName
+          - SmCertName
           - JcrServerName
           - MasterKey
           - ExtraJavaOptions
@@ -63,8 +62,8 @@ Metadata:
       - Label:
           default: AWS Quick Start Configuration
         Parameters:
-          - QSS3BucketName
-          - QSS3KeyPrefix
+          - QsS3BucketName
+          - QsS3KeyPrefix
     ParameterLabels:
       KeyPairName:
         default: SSH key name
@@ -116,11 +115,9 @@ Metadata:
         default: Container Registry version
       ReleaseStage:
         default: Release stage of the product to deploy
-      NumberOfSecondary:
-        default: Number of secondary instances
       NumberOfEC2Nodes:
         default: Number of EC2 nodes
-      SMCertName:
+      SmCertName:
         default: Container Registry licenses and certificate secret name
       JcrServerName:
         default: Container Registry server name
@@ -144,9 +141,9 @@ Metadata:
         default: Database allocated storage
       MultiAzDatabase:
         default: High available database
-      QSS3BucketName:
+      QsS3BucketName:
         default: Quick Start S3 bucket name
-      QSS3KeyPrefix:
+      QsS3KeyPrefix:
         default: Quick Start S3 key prefix
 
 Parameters:
@@ -321,7 +318,7 @@ Parameters:
       - "BETA"
     Default: "GA"
     Type: String
-  SMCertName:
+  SmCertName:
     Description: The secret name created in AWS Secrets Manager which contains the SSL certificate, certificate key, and Container Registry licenses.
     Type: String
   JcrServerName:
@@ -424,7 +421,7 @@ Parameters:
       - internet-facing
     Default: internet-facing
     Type: String
-  QSS3BucketName:
+  QsS3BucketName:
     Description: S3 bucket name for the Quick Start assets. This string can include
       numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start
       or end with a hyphen (-).
@@ -434,7 +431,7 @@ Parameters:
       (-).
     Default: aws-quickstart
     Type: String
-  QSS3KeyPrefix:
+  QsS3KeyPrefix:
     Description: S3 key prefix for the Quick Start assets. Quick Start key prefix
       can include numbers, lowercase letters, uppercase letters, hyphens (-), and
       forward slash (/).
@@ -448,18 +445,18 @@ Conditions:
   EnableBastion: !Equals [!Ref 'ProvisionBastionHost', 'Enabled']
 
 Resources:
-  BastionStack:
+  JcrBastionStack:
     Condition: EnableBastion
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}submodules/quickstart-linux-bastion/templates/linux-bastion.template'
+      TemplateURL: !Sub 'https://${QsS3BucketName}.s3.amazonaws.com/${QsS3KeyPrefix}submodules/quickstart-linux-bastion/templates/linux-bastion.template'
       Parameters:
         VPCID: !Ref VpcId
         PublicSubnet1ID: !Ref PublicSubnet1Id
         PublicSubnet2ID: !Ref PublicSubnet2Id
         KeyPairName: !Ref KeyPairName
-        QSS3BucketName: !Ref QSS3BucketName
-        QSS3KeyPrefix: !Sub '${QSS3KeyPrefix}submodules/quickstart-linux-bastion/'
+        QSS3BucketName: !Ref QsS3BucketName
+        QSS3KeyPrefix: !Sub '${QsS3KeyPrefix}submodules/quickstart-linux-bastion/'
         RemoteAccessCIDR: !Ref RemoteAccessCidr
         BastionInstanceType: !Ref BastionInstanceType
         RootVolumeSize: !Ref BastionRootVolumeSize
@@ -471,7 +468,7 @@ Resources:
   JcrCoreInfraStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/jfrog-container-registry-core-infrastructure.template.yaml"
+      TemplateURL: !Sub "https://${QsS3BucketName}.s3.amazonaws.com/${QsS3KeyPrefix}templates/jfrog-container-registry-core-infrastructure.template.yaml"
       Parameters:
         VpcId: !Ref VpcId
         VpcCidr: !Ref VPCCIDR
@@ -571,7 +568,7 @@ Resources:
   JcrECSBuild:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/jfrog-container-registry-ecs-ec2.template.yaml'
+      TemplateURL: !Sub 'https://${QsS3BucketName}.s3.amazonaws.com/${QsS3KeyPrefix}templates/jfrog-container-registry-ecs-ec2.template.yaml'
       Parameters:
         PrivateSubnet1Id: !Ref PrivateSubnet1Id
         PrivateSubnet2Id: !Ref PrivateSubnet2Id
@@ -583,11 +580,11 @@ Resources:
         InstanceType: !Ref InstanceType
         VolumeSize: !Ref VolumeSize
         DeploymentTag: Container Registry
-        Certificate: !Sub '{{resolve:secretsmanager:${SMCertName}:SecretString:Certificate}}'
-        CertificateKey: !Sub '{{resolve:secretsmanager:${SMCertName}:SecretString:CertificateKey}}'
-        CertificateDomain: !Sub '{{resolve:secretsmanager:${SMCertName}:SecretString:CertificateDomain}}'
+        Certificate: !Sub '{{resolve:secretsmanager:${SmCertName}:SecretString:Certificate}}'
+        CertificateKey: !Sub '{{resolve:secretsmanager:${SmCertName}:SecretString:CertificateKey}}'
+        CertificateDomain: !Sub '{{resolve:secretsmanager:${SmCertName}:SecretString:CertificateDomain}}'
         JcrServerName: !Ref JcrServerName
-        JcrIamAcessKey: !GetAtt JcrCoreInfraStack.Outputs.IAMAcessKey
+        JcrIamAcessKey: !GetAtt JcrCoreInfraStack.Outputs.IamAcessKey
         SecretAccessKey: !GetAtt JcrCoreInfraStack.Outputs.SecretAccessKey
         JcrS3Bucket: !GetAtt JcrCoreInfraStack.Outputs.S3Bucket
         DbUrl: !GetAtt JcrCoreInfraStack.Outputs.DatabaseUrl
@@ -605,8 +602,8 @@ Resources:
         SecurityGroups: !Ref JcrEC2SG
         JcrTargetGroupArn: !Ref JcrTargetGroup
         AnsibleVaultPass: !Ref AnsibleVaultPass
-        QSS3BucketName: !Ref QSS3BucketName
-        QSS3KeyPrefix: !Ref QSS3KeyPrefix
+        QsS3BucketName: !Ref QsS3BucketName
+        QsS3KeyPrefix: !Ref QsS3KeyPrefix
 
 Outputs:
   JcrUrl:
@@ -615,5 +612,5 @@ Outputs:
   BastionIP:
     Value: !If
       - EnableBastion
-      - !GetAtt BastionStack.Outputs.EIP1
+      - !GetAtt JcrBastionStack.Outputs.EIP1
       - ""
