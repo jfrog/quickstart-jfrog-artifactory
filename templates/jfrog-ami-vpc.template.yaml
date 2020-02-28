@@ -70,7 +70,7 @@ Resources:
   VpcDHCPOptionsAssociation:
     Type: AWS::EC2::VPCDHCPOptionsAssociation
     Properties:
-      VpcId: !Ref Vpc
+      VpcId: !Ref AmiVpc
       DhcpOptionsId: !Ref AmiDHCPOptions
   InternetGateway:
     Type: AWS::EC2::InternetGateway
@@ -81,12 +81,12 @@ Resources:
   VpcGatewayAttach:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
-      VpcId: !Ref Vpc
+      VpcId: !Ref AmiVpc
       InternetGatewayId: !Ref InternetGateway
   PublicSubnet:
     Type: AWS::EC2::Subnet
     Properties:
-      VpcId: !Ref Vpc
+      VpcId: !Ref AmiVpc
       CidrBlock: !Ref PublicSubnetCidr
       AvailabilityZone: !Ref AvailabilityZone
       MapPublicIpOnLaunch: true
@@ -96,12 +96,12 @@ Resources:
   PublicSubnetRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
-      VpcId: !Ref Vpc
+      VpcId: !Ref AmiVpc
       Tags:
         - Key: Name
           Value: !Sub 'Public Subnet Route table for ${AWS::StackName}'
   PublicSubnetRoute:
-    DependsOn: VPCGatewayAttach
+    DependsOn: VpcGatewayAttach
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref PublicSubnetRouteTable
@@ -131,7 +131,7 @@ Resources:
       - - com.amazonaws.
         - !Ref 'AWS::Region'
         - .s3
-      VpcId: !Ref Vpc
+      VpcId: !Ref AmiVpc
 
 Outputs:
   PublicSubnetCidr:
@@ -156,6 +156,6 @@ Outputs:
       Name: !Sub '${AWS::StackName}-VpcCidr:'
   VpcId:
     Description: Vpc ID
-    Value: !Ref Vpc
+    Value: !Ref AmiVpc
     Export:
       Name: !Sub '${AWS::StackName}-VpcId'
