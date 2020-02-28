@@ -3,13 +3,19 @@ whoami > /tmp/startup.log
 echo ${YQ_VERSION} >> /tmp/startup.log
 echo "downloading YQ" >> /tmp/startup.log
 wget "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -O /tmp/yq
-echo "Making it Executable"
+echo "Making it Executable"  >> /tmp/startup.log
 chmod +x /tmp/yq
 echo "Creating System YAML file" >> /tmp/startup.log
 /tmp/yq n shared.node.primary ${HA_IS_PRIMARY} | tee /tmp/system.yaml
 /tmp/yq w -i /tmp/system.yaml configVersion 1
 /tmp/yq w -i /tmp/system.yaml -- shared.extraJavaOpts "${EXTRA_JAVA_OPTIONS}"
-/tmp/yq w -i /tmp/system.yaml shared.node.haEnabled true
+if [ -z "$HA_ENABLED" ]
+then
+  /tmp/yq w -i /tmp/system.yaml shared.node.haEnabled true
+else
+  /tmp/yq w -i /tmp/system.yaml shared.node.haEnabled $HA_ENABLED
+fi
+
 /tmp/yq w -i /tmp/system.yaml shared.database.type ${DB_TYPE}
 /tmp/yq w -i /tmp/system.yaml shared.database.driver ${DB_DRIVER}
 /tmp/yq w -i /tmp/system.yaml shared.database.url ${DB_URL}
